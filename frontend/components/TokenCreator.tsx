@@ -81,7 +81,7 @@ const TokenCreator: React.FC = () => {
   };
 
   return (
-    <section className="min-h-[calc(100vh-64px)] py-12 px-4">
+    <section className="w-full py-12 px-4">
       <div className="max-w-2xl mx-auto fade-in">
         <h2 className="text-4xl font-bold gradient-text mb-2">Create Your Token</h2>
         <p className="text-gray-400 mb-8">

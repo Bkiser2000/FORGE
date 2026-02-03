@@ -22,12 +22,14 @@ const Home: NextPage = () => {
 
       <Navbar currentPage={currentPage} onPageChange={setCurrentPage} />
 
-      <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        {currentPage === "home" && (
-          <HeroSection onCreateClick={() => setCurrentPage("create")} />
-        )}
-        {currentPage === "create" && <TokenCreator />}
-        {currentPage === "dashboard" && <Dashboard />}
+      <main className="flex-1 flex flex-col items-center justify-center min-h-screen px-4">
+        <div className="w-full max-w-6xl">
+          {currentPage === "home" && (
+            <HeroSection onCreateClick={() => setCurrentPage("create")} />
+          )}
+          {currentPage === "create" && <TokenCreator />}
+          {currentPage === "dashboard" && <Dashboard />}
+        </div>
       </main>
     </>
   );

@@ -1,4 +1,5 @@
 import React, { useContext } from "react";
+import { AppBar, Toolbar, Typography, Button, Box, Select, MenuItem } from "@mui/material";
 import { WalletContext } from "@/pages/_app";
 
 interface NavbarProps {
@@ -12,7 +13,6 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     walletContext || {};
 
   const handleConnectWallet = () => {
-    // Placeholder for wallet connection logic
     setConnectedWallet?.("0x742d35Cc6634C0532925a3b844Bc9e7595f1e1e4");
   };
 
@@ -25,83 +25,116 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   };
 
   return (
-    <nav className="glass-effect sticky top-0 z-50 border-b border-blue-400 border-opacity-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => onPageChange("home")}>
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">⚒️</span>
-            </div>
-            <span className="gradient-text font-bold text-xl hidden sm:inline">FORGE</span>
-          </div>
+    <AppBar position="static" sx={{ background: "rgba(34, 34, 34, 0.95)" }}>
+      <Toolbar>
+        {/* Logo/Title */}
+        <Typography 
+          variant="h6" 
+          sx={{ flexGrow: 1, cursor: "pointer", fontWeight: "bold" }}
+          onClick={() => onPageChange("home")}
+        >
+          FORGE
+        </Typography>
 
-          {/* Navigation Links */}
-          <div className="hidden md:flex space-x-8">
-            <button
-              onClick={() => onPageChange("home")}
-              className={`transition ${
-                currentPage === "home"
-                  ? "text-blue-400 border-b-2 border-blue-400"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Home
-            </button>
-            <button
-              onClick={() => onPageChange("create")}
-              className={`transition ${
-                currentPage === "create"
-                  ? "text-blue-400 border-b-2 border-blue-400"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Create Token
-            </button>
-            <button
-              onClick={() => onPageChange("dashboard")}
-              className={`transition ${
-                currentPage === "dashboard"
-                  ? "text-blue-400 border-b-2 border-blue-400"
-                  : "text-gray-400 hover:text-white"
-              }`}
-            >
-              Dashboard
-            </button>
-          </div>
+        {/* Navigation Links */}
+        <Box sx={{ display: { xs: "none", md: "flex" }, gap: 3 }}>
+          <Button 
+            color="inherit" 
+            onClick={() => onPageChange("home")}
+            sx={{ 
+              color: currentPage === "home" ? "#60a5fa" : "inherit",
+              fontWeight: currentPage === "home" ? "bold" : "normal",
+              "&:hover": { color: "#60a5fa" }
+            }}
+          >
+            Home
+          </Button>
+          <Button 
+            color="inherit" 
+            onClick={() => onPageChange("create")}
+            sx={{ 
+              color: currentPage === "create" ? "#60a5fa" : "inherit",
+              fontWeight: currentPage === "create" ? "bold" : "normal",
+              "&:hover": { color: "#60a5fa" }
+            }}
+          >
+            Create
+          </Button>
+          <Button 
+            color="inherit" 
+            onClick={() => onPageChange("dashboard")}
+            sx={{ 
+              color: currentPage === "dashboard" ? "#60a5fa" : "inherit",
+              fontWeight: currentPage === "dashboard" ? "bold" : "normal",
+              "&:hover": { color: "#60a5fa" }
+            }}
+          >
+            Dashboard
+          </Button>
+        </Box>
 
-          {/* Chain Selector & Wallet */}
-          <div className="flex items-center space-x-4">
-            <select
-              value={selectedChain}
-              onChange={(e) => setSelectedChain?.(e.target.value as "solana" | "cronos")}
-              className="input-field text-sm py-2 px-3 w-32"
-            >
-              <option value="cronos">Cronos</option>
-              <option value="solana">Solana</option>
-            </select>
+        {/* Right Controls */}
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center", ml: 2 }}>
+          {/* Chain Selector */}
+          <Select
+            value={selectedChain}
+            onChange={(e) => setSelectedChain?.(e.target.value as "solana" | "cronos")}
+            sx={{
+              display: { xs: "none", sm: "flex" },
+              color: "white",
+              fontSize: "0.875rem",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(255, 255, 255, 0.2)"
+              },
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(255, 255, 255, 0.3)"
+              },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#60a5fa"
+              }
+            }}
+          >
+            <MenuItem value="cronos">Cronos</MenuItem>
+            <MenuItem value="solana">Solana</MenuItem>
+          </Select>
 
-            {connectedWallet ? (
-              <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-400">
-                  {formatWallet(connectedWallet)}
-                </span>
-                <button
-                  onClick={handleDisconnect}
-                  className="btn-secondary text-sm"
-                >
-                  Disconnect
-                </button>
-              </div>
-            ) : (
-              <button onClick={handleConnectWallet} className="btn-primary text-sm">
-                Connect Wallet
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </nav>
+          {/* Wallet Button */}
+          {connectedWallet ? (
+            <Button
+              onClick={handleDisconnect}
+              sx={{
+                color: "white",
+                backgroundColor: "rgba(220, 38, 38, 0.2)",
+                border: "1px solid rgba(220, 38, 38, 0.5)",
+                textTransform: "none",
+                fontSize: "0.875rem",
+                "&:hover": {
+                  backgroundColor: "rgba(220, 38, 38, 0.3)"
+                }
+              }}
+            >
+              {formatWallet(connectedWallet)}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleConnectWallet}
+              sx={{
+                color: "white",
+                backgroundColor: "#2563eb",
+                textTransform: "none",
+                fontSize: "0.875rem",
+                fontWeight: "bold",
+                "&:hover": {
+                  backgroundColor: "#1d4ed8"
+                }
+              }}
+            >
+              Connect
+            </Button>
+          )}
+        </Box>
+      </Toolbar>
+    </AppBar>
   );
 };
 

@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <section className="min-h-[calc(100vh-64px)] py-12 px-4">
+    <section className="w-full py-12 px-4">
       <div className="max-w-6xl mx-auto fade-in">
         {/* Header */}
         <div className="mb-8">

@@ -1,4 +1,5 @@
 import React from "react";
+import { Container, Typography, Box, Button, Grid, Card, CardContent } from "@mui/material";
 
 interface HeroSectionProps {
   onCreateClick: () => void;
@@ -6,72 +7,256 @@ interface HeroSectionProps {
 
 const HeroSection: React.FC<HeroSectionProps> = ({ onCreateClick }) => {
   return (
-    <section className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4">
-      <div className="max-w-4xl text-center fade-in">
+    <Box
+      sx={{
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        py: 8,
+      }}
+    >
+      <Container maxWidth="lg" sx={{ textAlign: "center" }}>
         {/* Main Heading */}
-        <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6">
-          <span className="gradient-text">Forge Your Token</span>
-        </h1>
+        <Typography
+          variant="h2"
+          sx={{
+            fontWeight: "bold",
+            mb: 3,
+            background: "linear-gradient(135deg, #60a5fa 0%, #00d4ff 100%)",
+            backgroundClip: "text",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            fontSize: { xs: "2rem", sm: "3rem", md: "4rem" },
+          }}
+        >
+          Forge Your Token
+        </Typography>
 
         {/* Subheading */}
-        <p className="text-xl sm:text-2xl text-gray-400 mb-8 max-w-2xl mx-auto">
+        <Typography
+          variant="h6"
+          sx={{
+            color: "#d1d5db",
+            mb: 6,
+            maxWidth: "600px",
+            mx: "auto",
+            fontSize: { xs: "1rem", md: "1.25rem" },
+          }}
+        >
           Create custom crypto tokens on Solana and Cronos networks. Simple, secure, and ready to use.
-        </p>
+        </Typography>
 
         {/* Feature Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12 mt-16">
-          <div className="card hover:border-blue-400 transition">
-            <div className="text-3xl mb-4">⚡</div>
-            <h3 className="text-lg font-semibold mb-2">Lightning Fast</h3>
-            <p className="text-gray-400 text-sm">
-              Create tokens in seconds with instant confirmation
-            </p>
-          </div>
+        <Grid container spacing={3} sx={{ mb: 8, mt: 4 }}>
+          <Grid item xs={12}>
+            <Card
+              sx={{
+                background: "rgba(30, 41, 59, 0.4)",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(96, 165, 250, 0.2)",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                py: 4,
+                "&:hover": {
+                  background: "rgba(30, 41, 59, 0.6)",
+                  borderColor: "rgba(96, 165, 250, 0.4)",
+                },
+                transition: "all 0.3s ease",
+              }}
+            >
+              <CardContent sx={{ textAlign: "center", width: "100%" }}>
+                <Box sx={{ fontSize: "3rem", mb: 2 }}>⚡</Box>
+                <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+                  Lightning Fast
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#9ca3af" }}>
+                  Create tokens in seconds with instant confirmation
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
 
-          <div className="card hover:border-blue-400 transition">
-            <div className="text-3xl mb-4">🔐</div>
-            <h3 className="text-lg font-semibold mb-2">Secure</h3>
-            <p className="text-gray-400 text-sm">
-              Audited smart contracts and secure wallet integration
-            </p>
-          </div>
+          <Grid item xs={12}>
+            <Card
+              sx={{
+                background: "rgba(30, 41, 59, 0.4)",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(96, 165, 250, 0.2)",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                py: 4,
+                "&:hover": {
+                  background: "rgba(30, 41, 59, 0.6)",
+                  borderColor: "rgba(96, 165, 250, 0.4)",
+                },
+                transition: "all 0.3s ease",
+              }}
+            >
+              <CardContent sx={{ textAlign: "center", width: "100%" }}>
+                <Box sx={{ fontSize: "3rem", mb: 2 }}>🔐</Box>
+                <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+                  Secure
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#9ca3af" }}>
+                  Audited smart contracts and secure wallet integration
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
 
-          <div className="card hover:border-blue-400 transition">
-            <div className="text-3xl mb-4">🌐</div>
-            <h3 className="text-lg font-semibold mb-2">Multi-Chain</h3>
-            <p className="text-gray-400 text-sm">
-              Deploy on Solana and Cronos from a single interface
-            </p>
-          </div>
-        </div>
+          <Grid item xs={12}>
+            <Card
+              sx={{
+                background: "rgba(30, 41, 59, 0.4)",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(96, 165, 250, 0.2)",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                py: 4,
+                "&:hover": {
+                  background: "rgba(30, 41, 59, 0.6)",
+                  borderColor: "rgba(96, 165, 250, 0.4)",
+                },
+                transition: "all 0.3s ease",
+              }}
+            >
+              <CardContent sx={{ textAlign: "center", width: "100%" }}>
+                <Box sx={{ fontSize: "3rem", mb: 2 }}>🌐</Box>
+                <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+                  Multi-Chain
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#9ca3af" }}>
+                  Deploy on Solana and Cronos from a single interface
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <button onClick={onCreateClick} className="btn-primary px-8 py-4 text-lg">
-            Start Creating →
-          </button>
-          <button className="btn-secondary px-8 py-4 text-lg">
-            View Documentation
-          </button>
-        </div>
+        <Box sx={{ display: "flex", gap: 2, justifyContent: "center", mb: 10, flexWrap: "wrap" }}>
+          <Button
+            onClick={onCreateClick}
+            variant="contained"
+            sx={{
+              background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
+              color: "white",
+              px: 4,
+              py: 1.5,
+              fontSize: "1rem",
+              fontWeight: "bold",
+              textTransform: "none",
+              "&:hover": {
+                background: "linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)",
+              },
+            }}
+          >
+            Start Creating
+          </Button>
+          <Button
+            variant="outlined"
+            sx={{
+              color: "#60a5fa",
+              borderColor: "#60a5fa",
+              px: 4,
+              py: 1.5,
+              fontSize: "1rem",
+              fontWeight: "bold",
+              textTransform: "none",
+              "&:hover": {
+                borderColor: "#93c5fd",
+                color: "#93c5fd",
+              },
+            }}
+          >
+            Learn More
+          </Button>
+        </Box>
 
-        {/* Stats */}
-        <div className="mt-20 grid grid-cols-3 gap-8 text-center">
-          <div>
-            <div className="text-3xl font-bold gradient-text">1000+</div>
-            <p className="text-gray-400">Tokens Created</p>
-          </div>
-          <div>
-            <div className="text-3xl font-bold gradient-text">50k+</div>
-            <p className="text-gray-400">Active Users</p>
-          </div>
-          <div>
-            <div className="text-3xl font-bold gradient-text">$500M+</div>
-            <p className="text-gray-400">Total Value Minted</p>
-          </div>
-        </div>
-      </div>
-    </section>
+        {/* Stats Section */}
+        <Box sx={{ borderTop: "1px solid rgba(96, 165, 250, 0.2)", pt: 6 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#9ca3af",
+              mb: 4,
+              fontWeight: "bold",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+            }}
+          >
+            Trusted by
+          </Typography>
+
+          <Grid container spacing={4} sx={{ justifyContent: "center" }}>
+            <Grid item xs={12} sm={6} md={4}>
+              <Typography
+                sx={{
+                  fontSize: "2.5rem",
+                  fontWeight: "bold",
+                  background: "linear-gradient(135deg, #60a5fa 0%, #00d4ff 100%)",
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                1000+
+              </Typography>
+              <Typography sx={{ color: "#9ca3af", mt: 1 }}>
+                Tokens Created
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={4}>
+              <Typography
+                sx={{
+                  fontSize: "2.5rem",
+                  fontWeight: "bold",
+                  background: "linear-gradient(135deg, #60a5fa 0%, #00d4ff 100%)",
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                50k+
+              </Typography>
+              <Typography sx={{ color: "#9ca3af", mt: 1 }}>
+                Active Users
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={4}>
+              <Typography
+                sx={{
+                  fontSize: "2.5rem",
+                  fontWeight: "bold",
+                  background: "linear-gradient(135deg, #60a5fa 0%, #00d4ff 100%)",
+                  backgroundClip: "text",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                $500M+
+              </Typography>
+              <Typography sx={{ color: "#9ca3af", mt: 1 }}>
+                Total Value Minted
+              </Typography>
+            </Grid>
+          </Grid>
+        </Box>
+      </Container>
+    </Box>
   );
 };
 
