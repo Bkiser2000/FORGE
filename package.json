@@ -1,0 +1,33 @@
+{
+  "name": "forge",
+  "version": "1.0.0",
+  "description": "Multi-chain token minting platform for Solana and Cronos",
+  "workspaces": [
+    "contracts/cronos",
+    "frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm install --workspace=contracts/cronos && npm install --workspace=frontend",
+    "dev:contracts": "cd contracts/cronos && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:contracts": "cd contracts/cronos && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "test:contracts": "cd contracts/cronos && npm run test",
+    "test:frontend": "cd frontend && npm run test"
+  },
+  "keywords": [
+    "crypto",
+    "token",
+    "minting",
+    "solana",
+    "cronos",
+    "defi",
+    "dapp",
+    "web3"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

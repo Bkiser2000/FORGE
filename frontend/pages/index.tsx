@@ -1,0 +1,36 @@
+import type { NextPage } from "next";
+import Head from "next/head";
+import { useState } from "react";
+import Navbar from "@/components/Navbar";
+import HeroSection from "@/components/HeroSection";
+import TokenCreator from "@/components/TokenCreator";
+import Dashboard from "@/components/Dashboard";
+
+type Page = "home" | "create" | "dashboard";
+
+const Home: NextPage = () => {
+  const [currentPage, setCurrentPage] = useState<Page>("home");
+
+  return (
+    <>
+      <Head>
+        <title>FORGE - Multi-Chain Token Minting Platform</title>
+        <meta name="description" content="Create custom crypto tokens on Solana and Cronos" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+
+      <Navbar currentPage={currentPage} onPageChange={setCurrentPage} />
+
+      <main className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        {currentPage === "home" && (
+          <HeroSection onCreateClick={() => setCurrentPage("create")} />
+        )}
+        {currentPage === "create" && <TokenCreator />}
+        {currentPage === "dashboard" && <Dashboard />}
+      </main>
+    </>
+  );
+};
+
+export default Home;

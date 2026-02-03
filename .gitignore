@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Production
+build/
+dist/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Solana
+target/
+.anchor/
+
+# Build artifacts
+*.log
+
+# Solidity
+artifacts/
+cache/
+typechain-types/
+
+# Next.js
+.next/
+out/
+
+# Frontend
+.turbo/

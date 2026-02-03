@@ -1,0 +1,16 @@
+[package]
+name = "forge-solana"
+version = "0.1.0"
+description = "Solana token minting program"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+anchor-lang = "0.28"
+anchor-spl = "0.28"
+spl-token = "4"
+
+[profile.release]
+overflow-checks = true
