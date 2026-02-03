@@ -1,5 +1,5 @@
 import type { AppProps } from "next/app";
-import { useState, ReactNode } from "react";
+import { useState } from "react";
 import React from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";

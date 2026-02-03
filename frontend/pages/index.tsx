@@ -1,4 +1,3 @@
-import type { NextPage } from "next";
 import Head from "next/head";
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
@@ -8,7 +7,7 @@ import Dashboard from "@/components/Dashboard";
 
 type Page = "home" | "create" | "dashboard";
 
-const Home: NextPage = () => {
+const Home = () => {
   const [currentPage, setCurrentPage] = useState<Page>("home");
 
   return (
