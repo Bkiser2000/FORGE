@@ -40,7 +40,8 @@ export const isValidEthereumAddress = (address: string): boolean => {
  */
 export const isValidSolanaAddress = (address: string): boolean => {
   try {
-    const decoded = Buffer.from(address, "base58");
+    const bs58 = require('bs58');
+    const decoded = bs58.decode(address);
     return decoded.length === 32;
   } catch {
     return false;
