@@ -1,5 +1,5 @@
 import React from "react";
-import { Container, Typography, Box, Button, Grid, Card, CardContent } from "@mui/material";
+import { Container, Typography, Box, Button, Card, CardContent } from "@mui/material";
 
 interface HeroSectionProps {
   onCreateClick: () => void;
@@ -49,8 +49,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onCreateClick }) => {
         </Typography>
 
         {/* Feature Grid */}
-        <Grid container spacing={3} sx={{ mb: 8, mt: 4 }}>
-          <Grid item xs={12}>
+        <Box sx={{ mb: 8, mt: 4, display: "flex", flexDirection: "column", gap: 3 }}>
+          <Box>
             <Card
               sx={{
                 background: "rgba(30, 41, 59, 0.4)",
@@ -79,9 +79,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onCreateClick }) => {
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
 
-          <Grid item xs={12}>
+          <Box>
             <Card
               sx={{
                 background: "rgba(30, 41, 59, 0.4)",
@@ -110,9 +110,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onCreateClick }) => {
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
+          </Box>
 
-          <Grid item xs={12}>
+          <Box>
             <Card
               sx={{
                 background: "rgba(30, 41, 59, 0.4)",
@@ -141,8 +141,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onCreateClick }) => {
                 </Typography>
               </CardContent>
             </Card>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         {/* CTA Buttons */}
         <Box sx={{ display: "flex", gap: 2, justifyContent: "center", mb: 10, flexWrap: "wrap" }}>
@@ -199,8 +199,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onCreateClick }) => {
             Trusted by
           </Typography>
 
-          <Grid container spacing={4} sx={{ justifyContent: "center" }}>
-            <Grid item xs={12} sm={6} md={4}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+            <Box sx={{ textAlign: "center" }}>
               <Typography
                 sx={{
                   fontSize: "2.5rem",
@@ -216,9 +216,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onCreateClick }) => {
               <Typography sx={{ color: "#9ca3af", mt: 1 }}>
                 Tokens Created
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} sm={6} md={4}>
+            <Box sx={{ textAlign: "center" }}>
               <Typography
                 sx={{
                   fontSize: "2.5rem",
@@ -234,9 +234,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onCreateClick }) => {
               <Typography sx={{ color: "#9ca3af", mt: 1 }}>
                 Active Users
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12} sm={6} md={4}>
+            <Box sx={{ textAlign: "center" }}>
               <Typography
                 sx={{
                   fontSize: "2.5rem",
@@ -252,8 +252,8 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onCreateClick }) => {
               <Typography sx={{ color: "#9ca3af", mt: 1 }}>
                 Total Value Minted
               </Typography>
-            </Grid>
-          </Grid>
+            </Box>
+          </Box>
         </Box>
       </Container>
     </Box>
