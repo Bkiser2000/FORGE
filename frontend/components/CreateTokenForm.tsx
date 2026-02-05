@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
 import {
   Box,
   Button,
@@ -13,17 +12,26 @@ import {
   Stack,
   Paper,
 } from '@mui/material';
-import ForgeClient from '../lib/forge-client';
-import { useTokens } from '../hooks/useTokens';
+
+// Only import wallet hook after checking window exists
+let useWallet: any;
+let ForgeClient: any;
+let useTokens: any;
+
+if (typeof window !== 'undefined') {
+  const walletModule = require('@solana/wallet-adapter-react');
+  useWallet = walletModule.useWallet;
+  ForgeClient = require('../lib/forge-client').default;
+  useTokens = require('../hooks/useTokens').useTokens;
+}
 
 interface CreateTokenFormProps {
   onSuccess?: (txSignature: string) => void;
 }
 
-export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
+const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
   onSuccess,
 }) => {
-  const [isClient, setIsClient] = useState(false);
   const { connected, publicKey, signAllTransactions, signTransaction } = useWallet();
   const { addToken } = useTokens();
   const [name, setName] = useState('');
@@ -32,14 +40,6 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
   const [initialSupply, setInitialSupply] = useState(1000);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return null;
-  }
 
   const handleCreateToken = async () => {
     console.log('handleCreateToken called');
@@ -414,4 +414,12 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
       </Box>
     </Box>
   );
+};
+
+// Wrapper component that only renders on client
+export const CreateTokenForm: React.FC<CreateTokenFormProps> = (props) => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  return <CreateTokenFormContent {...props} />;
 };

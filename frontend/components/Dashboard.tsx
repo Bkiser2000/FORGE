@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useTokens } from "../hooks/useTokens";
 import {
   Card,
   CardContent,
@@ -15,7 +14,14 @@ import {
   Typography,
 } from "@mui/material";
 
-const Dashboard: React.FC = () => {
+// Only import hooks after checking window exists
+let useTokens: any;
+
+if (typeof window !== 'undefined') {
+  useTokens = require("../hooks/useTokens").useTokens;
+}
+
+const DashboardContent: React.FC = () => {
   const { tokens, isMounted } = useTokens();
   const [activeTab, setActiveTab] = useState<"tokens" | "activity">("tokens");
 
@@ -133,6 +139,14 @@ const Dashboard: React.FC = () => {
       </div>
     </section>
   );
+};
+
+// Wrapper component that only renders on client
+const Dashboard: React.FC = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  return <DashboardContent />;
 };
 
 export default Dashboard;
