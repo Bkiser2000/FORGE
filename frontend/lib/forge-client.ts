@@ -125,12 +125,19 @@ export class ForgeClient {
         console.log('  Has accounts:', !!(idl as any).accounts);
         console.log('  Has instructions:', Array.isArray((idl as any).instructions) ? (idl as any).instructions.length : 'not array');
         
+        // Add metadata if missing (required for Anchor 0.32+)
+        const idlWithMetadata = {
+          ...idl,
+          metadata: (idl as any).metadata || { name: "forge_solana", spec: "0.1.0" }
+        };
+        
         console.log('Step 2: Creating Program instance...');
-        // Anchor 0.32.1 constructor: new Program(idl, programId, provider)
-        program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
+        // Use any cast to bypass TypeScript issues
+        program = new (anchor.Program as any)(idlWithMetadata, PROGRAM_ID, this.provider);
         console.log('✓ Program instance created successfully');
       } catch (err1) {
         console.error('❌ Constructor failed:', err1 instanceof Error ? err1.message : String(err1));
+        console.error('Full error:', err1);
         throw new Error(`Failed to create Program: ${err1 instanceof Error ? err1.message : String(err1)}`);
       }
 
