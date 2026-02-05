@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import { PublicKey, Connection } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
@@ -123,23 +123,23 @@ export class ForgeClient {
         const response = await fetch('/forge-idl.json', { cache: 'no-cache' });
         if (response.ok) {
           idl = await response.json();
-          console.log('✓ IDL loaded from local cache');
+          console.log('✓ IDL loaded');
         }
-      } catch {}
-
-      if (!idl) {
-        try {
-          idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
-          console.log('✓ IDL fetched from on-chain');
-        } catch (err) {
-          throw new Error('IDL not found');
-        }
+      } catch (e) {
+        console.log('Local IDL failed, trying on-chain...');
       }
 
-      if (!idl) throw new Error("IDL is null");
+      if (!idl) {
+        idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
+        if (!idl) throw new Error("IDL not found");
+        console.log('✓ IDL fetched from on-chain');
+      }
 
-      // Create program
-      const program = new anchor.Program(idl as anchor.Idl, this.provider);
+      // Create program - programId is in IDL metadata
+      const program = new anchor.Program(
+        idl as anchor.Idl,
+        this.provider
+      );
 
       // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
@@ -148,13 +148,13 @@ export class ForgeClient {
 
       console.log('Sending createToken RPC...');
       
-      // Use Anchor's rpc() method - let it handle everything
+      // Use Anchor's rpc() with plain numbers
       const signature = await program.methods
         .createToken(
           params.name,
           params.symbol,
           params.decimals,
-          params.initialSupply  // Plain number, no BN wrapping
+          params.initialSupply
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
