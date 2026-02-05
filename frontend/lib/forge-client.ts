@@ -25,12 +25,11 @@ export interface TokenConfig {
 }
 
 export class ForgeClient {
-  private connection: Connection;
+  private connection: Connection | null = null;
   private wallet: any;
   private provider: AnchorProvider | null = null;
 
   constructor(wallet: any) {
-    this.connection = new Connection(DEVNET_RPC, "confirmed");
     this.wallet = wallet;
     
     if (wallet && wallet.publicKey) {
@@ -46,6 +45,11 @@ export class ForgeClient {
         signTransaction: wallet.signTransaction || async function(tx: any) { return tx; },
       };
 
+      // Lazy-initialize connection on first use to avoid blocking
+      if (!this.connection) {
+        this.connection = new Connection(DEVNET_RPC, "confirmed");
+      }
+
       this.provider = new AnchorProvider(
         this.connection,
         walletAdapter as any,
@@ -53,6 +57,13 @@ export class ForgeClient {
       );
       anchor.setProvider(this.provider);
     }
+  }
+
+  private getConnection(): Connection {
+    if (!this.connection) {
+      this.connection = new Connection(DEVNET_RPC, "confirmed");
+    }
+    return this.connection;
   }
 
   async createToken(params: CreateTokenParams): Promise<string> {
@@ -210,7 +221,7 @@ export class ForgeClient {
       transaction.feePayer = this.provider.wallet.publicKey;
       
       // Get recent blockhash
-      const { blockhash } = await this.connection.getLatestBlockhash('confirmed');
+      const { blockhash } = await this.getConnection().getLatestBlockhash('confirmed');
       transaction.recentBlockhash = blockhash;
       
       console.log('✓ Transaction built, signing...');
@@ -224,12 +235,12 @@ export class ForgeClient {
       console.log('✓ Transaction signed, sending...');
       
       // Send transaction
-      const signature = await this.connection.sendRawTransaction(signedTx.serialize());
+      const signature = await this.getConnection().sendRawTransaction(signedTx.serialize());
       
       console.log('✓ Transaction sent! Signature:', signature);
       
       // Wait for confirmation
-      const confirmation = await this.connection.confirmTransaction(signature, 'confirmed');
+      const confirmation = await this.getConnection().confirmTransaction(signature, 'confirmed');
       console.log('✓ Transaction confirmed');
       
       return signature;
@@ -298,10 +309,6 @@ export class ForgeClient {
       console.error("Error burning tokens:", error);
       throw error;
     }
-  }
-
-  getConnection(): Connection {
-    return this.connection;
   }
 
   getProgramId(): PublicKey {
