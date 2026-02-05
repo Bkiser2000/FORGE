@@ -24,18 +24,18 @@ jobs:
           echo "✓ Dependencies installed"
 
       - name: Install Rust
+        shell: bash
         run: |
           echo "=== Installing Rust ==="
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --no-modify-path
-          source $HOME/.cargo/env
-          rustc --version
-          cargo --version
           echo "✓ Rust installed"
 
       - name: Build Solana Contract
+        shell: bash
         working-directory: ./contracts/solana
         run: |
-          source $HOME/.cargo/env
+          # Setup Rust environment
+          export PATH="$HOME/.cargo/bin:$PATH"
           
           echo "=== Checking cargo ==="
           which cargo && cargo --version
