@@ -37,6 +37,9 @@ jobs:
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
           
+          # Remove old lock file to avoid version conflicts
+          rm -f Cargo.lock
+          
           echo "=== Checking cargo ==="
           which cargo && cargo --version
           
