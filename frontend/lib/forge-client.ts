@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Idl, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
+import { BN } from "bn.js";
 
 const PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
 const DEVNET_RPC = "https://api.devnet.solana.com";
@@ -144,12 +145,20 @@ export class ForgeClient {
 
       // Build and send transaction
       console.log('Building createToken transaction...');
+      console.log('Args:', {
+        name: params.name,
+        symbol: params.symbol,
+        decimals: params.decimals,
+        initialSupply: params.initialSupply,
+        initialSupplyBN: new BN(params.initialSupply).toString()
+      });
+      
       const tx = await program.methods
         .createToken(
           params.name,
           params.symbol,
           params.decimals,
-          new anchor.BN(params.initialSupply)
+          new BN(params.initialSupply)
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
