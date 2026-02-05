@@ -147,7 +147,7 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
 
           <Button
             onClick={handleCreateToken}
-            disabled={loading || !wallet?.connected}
+            disabled={loading || !connected}
             variant="contained"
             size="large"
             sx={{
