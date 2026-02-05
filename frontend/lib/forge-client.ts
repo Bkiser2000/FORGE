@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Idl, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { BN } from "bn.js";
 
@@ -129,7 +129,9 @@ export class ForgeClient {
       try {
         // Create the Program instance with the corrected IDL
         console.log('Attempting new Program() constructor...');
-        program = new anchor.Program(idl as Idl, PROGRAM_ID, this.provider);
+        // Anchor 0.32.1 Program signature seems to be: new Program(idl, provider, coder?)
+        const idlWithProgramId = { ...idl, metadata: { address: PROGRAM_ID.toString() } };
+        program = new anchor.Program(idlWithProgramId as any, this.provider);
         console.log('✓ Program instance created successfully');
       } catch (programErr) {
         console.error('Program creation failed:', programErr);
@@ -211,7 +213,8 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
+      const idlWithProgramId = { ...idl, metadata: { address: PROGRAM_ID.toString() } };
+      const program = new anchor.Program(idlWithProgramId as any, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       // This would need the actual mint and token account addresses
@@ -239,7 +242,8 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
+      const idlWithProgramId = { ...idl, metadata: { address: PROGRAM_ID.toString() } };
+      const program = new anchor.Program(idlWithProgramId as any, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
