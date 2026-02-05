@@ -294,9 +294,11 @@ export class ForgeClient {
       const transaction = new anchor.web3.Transaction().add(instruction);
       transaction.feePayer = this.provider.wallet.publicKey;
       
-      // Get recent blockhash
-      const { blockhash } = await this.getConnection().getLatestBlockhash('confirmed');
+      // Get recent blockhash - do this as late as possible, right before signing
+      console.log('Getting fresh blockhash...');
+      const { blockhash } = await this.getConnection().getLatestBlockhash('finalized');
       transaction.recentBlockhash = blockhash;
+      console.log('✓ Got blockhash:', blockhash);
       
       console.log('✓ Transaction built, signing...');
       
@@ -308,12 +310,47 @@ export class ForgeClient {
       
       console.log('✓ Transaction signed, sending...');
       
-      // Send transaction
-      const signature = await this.getConnection().sendRawTransaction(signedTx.serialize());
+      // Send transaction with retry logic for blockhash expiration
+      let signature: string;
+      let retries = 3;
       
-      console.log('✓ Transaction sent! Signature:', signature);
+      while (retries > 0) {
+        try {
+          // Send transaction
+          signature = await this.getConnection().sendRawTransaction(signedTx.serialize(), {
+            skipPreflight: false,
+            preflightCommitment: 'confirmed',
+          });
+          console.log('✓ Transaction sent! Signature:', signature);
+          break;
+        } catch (sendErr) {
+          retries--;
+          if (retries > 0 && sendErr instanceof Error && sendErr.message.includes('Blockhash not found')) {
+            console.warn('Blockhash expired, retrying with fresh blockhash...', sendErr.message);
+            
+            // Get a fresh blockhash and re-sign
+            const { blockhash: newBlockhash } = await this.getConnection().getLatestBlockhash('finalized');
+            const newTransaction = new anchor.web3.Transaction().add(instruction);
+            newTransaction.feePayer = this.provider.wallet.publicKey;
+            newTransaction.recentBlockhash = newBlockhash;
+            newTransaction.sign(mint, tokenConfig, ownerTokenAccount);
+            const newSignedTx = await this.provider.wallet.signTransaction(newTransaction);
+            
+            // Update for next attempt
+            Object.assign(signedTx, newSignedTx);
+          } else {
+            console.error('Failed to send transaction:', sendErr);
+            throw sendErr;
+          }
+        }
+      }
+      
+      if (!signature!) {
+        throw new Error('Failed to send transaction after retries');
+      }
       
       // Wait for confirmation
+      console.log('Waiting for transaction confirmation...');
       const confirmation = await this.getConnection().confirmTransaction(signature, 'confirmed');
       console.log('✓ Transaction confirmed');
       
