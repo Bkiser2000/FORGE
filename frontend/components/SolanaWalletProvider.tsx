@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   ConnectionProvider,
   WalletProvider,
@@ -18,7 +18,6 @@ import '@solana/wallet-adapter-react-ui/styles.css';
 export const SolanaWalletProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [isClient, setIsClient] = useState(false);
   const network = WalletAdapterNetwork.Devnet;
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
 
@@ -30,14 +29,6 @@ export const SolanaWalletProvider: React.FC<{ children: React.ReactNode }> = ({
     ],
     []
   );
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return <>{children}</>;
-  }
 
   return (
     <ConnectionProvider endpoint={endpoint}>
