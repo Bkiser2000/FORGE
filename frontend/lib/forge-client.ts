@@ -5,7 +5,11 @@ import { BN } from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
-// Cache PublicKey instances to avoid repeated creation
+// Use string representations - no object creation
+const PROGRAM_ID_STRING = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF";
+const TOKEN_PROGRAM_ID_STRING = "TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ";
+
+// Cache PublicKey instances - only create when absolutely necessary
 let cachedProgramId: PublicKey | null = null;
 let cachedTokenProgramId: PublicKey | null = null;
 
@@ -15,7 +19,7 @@ const getProgramId = (): PublicKey => {
   }
   if (!cachedProgramId) {
     try {
-      cachedProgramId = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+      cachedProgramId = new PublicKey(PROGRAM_ID_STRING);
     } catch (err) {
       console.error("Failed to create PROGRAM_ID PublicKey:", err);
       throw err;
@@ -30,13 +34,26 @@ const getTokenProgramId = (): PublicKey => {
   }
   if (!cachedTokenProgramId) {
     try {
-      cachedTokenProgramId = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+      cachedTokenProgramId = new PublicKey(TOKEN_PROGRAM_ID_STRING);
     } catch (err) {
       console.error("Failed to create TOKEN_PROGRAM_ID PublicKey:", err);
       throw err;
     }
   }
   return cachedTokenProgramId;
+};
+
+// Helper: Convert base58 string to PublicKey, handling SES restrictions
+const toPublicKey = (key: string | PublicKey): PublicKey => {
+  if (typeof key === 'string') {
+    try {
+      return new PublicKey(key);
+    } catch (err) {
+      console.error(`Failed to convert string to PublicKey: ${key}`, err);
+      throw err;
+    }
+  }
+  return key;
 };
 
 export interface CreateTokenParams {
@@ -221,25 +238,47 @@ export class ForgeClient {
       console.log('System program:', systemProgram.toString());
       console.log('Rent sysvar:', rentSysvar.toString());
       
-      // Create keys array with cached PublicKey instances
+      // Create keys array - build it directly without intermediate PublicKey creations
       console.log('Creating instruction with keys...');
       let keys: any[];
       try {
-        // Use the cached token program ID
-        const tokenProgramId = getTokenProgramId();
-        console.log('Token program:', tokenProgramId.toString());
+        // Pre-collect all PublicKey objects that already exist
+        const walletPubkey = this.provider.wallet.publicKey;
+        const tokenConfigPubkey = tokenConfig.publicKey;
+        const mintPubkey = mint.publicKey;
+        const ownerTokenAccountPubkey = ownerTokenAccount.publicKey;
+        
+        console.log('Pre-collected existing PublicKeys');
+        
+        // For token program ID, use the cached getter wrapped in additional error handling
+        let tokenProgramIdKey: PublicKey;
+        try {
+          tokenProgramIdKey = getTokenProgramId();
+          console.log('✓ Got cached token program ID');
+        } catch (tpErr) {
+          console.error('Failed to get cached token program ID:', tpErr);
+          // Fallback: create it directly one more time with more logging
+          console.log('Attempting direct creation of token program ID...');
+          try {
+            tokenProgramIdKey = new PublicKey(TOKEN_PROGRAM_ID_STRING);
+            console.log('✓ Direct creation succeeded');
+          } catch (directErr) {
+            console.error('Direct creation also failed:', directErr);
+            throw new Error(`Cannot create token program ID: ${directErr instanceof Error ? directErr.message : String(directErr)}`);
+          }
+        }
         
         keys = [
-          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
-          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
-          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
-          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
+          { pubkey: walletPubkey, isSigner: true, isWritable: true },
+          { pubkey: tokenConfigPubkey, isSigner: true, isWritable: true },
+          { pubkey: mintPubkey, isSigner: true, isWritable: true },
+          { pubkey: ownerTokenAccountPubkey, isSigner: true, isWritable: true },
           { pubkey: systemProgram, isSigner: false, isWritable: false },
-          { pubkey: tokenProgramId, isSigner: false, isWritable: false },
+          { pubkey: tokenProgramIdKey, isSigner: false, isWritable: false },
           { pubkey: rentSysvar, isSigner: false, isWritable: false },
         ];
         
-        console.log('Keys created successfully');
+        console.log('✓ Keys array built successfully');
       } catch (keyErr) {
         console.error('Error creating keys array:', keyErr);
         throw new Error(`Failed to create instruction keys: ${keyErr instanceof Error ? keyErr.message : 'Unknown error'}`);
@@ -251,17 +290,23 @@ export class ForgeClient {
         mint: mint.publicKey.toString(),
         ownerTokenAccount: ownerTokenAccount.publicKey.toString(),
         systemProgram: systemProgram.toString(),
-        tokenProgram: "TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ",
+        tokenProgram: TOKEN_PROGRAM_ID_STRING,
         rentSysvar: rentSysvar.toString(),
       });
       
-      const instruction = new anchor.web3.TransactionInstruction({
-        programId: getProgramId(),
-        keys: keys,
-        data: instructionData,
-      });
-      
-      console.log('✓ Instruction created');
+      let instruction: anchor.web3.TransactionInstruction;
+      try {
+        const programIdForInstruction = getProgramId();
+        instruction = new anchor.web3.TransactionInstruction({
+          programId: programIdForInstruction,
+          keys: keys,
+          data: instructionData,
+        });
+        console.log('✓ Instruction created successfully');
+      } catch (instrErr) {
+        console.error('Error creating TransactionInstruction:', instrErr);
+        throw new Error(`Failed to create instruction: ${instrErr instanceof Error ? instrErr.message : 'Unknown error'}`);
+      }
       
       // Build transaction
       const transaction = new anchor.web3.Transaction().add(instruction);
