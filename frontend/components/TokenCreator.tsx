@@ -1,5 +1,3 @@
-'use client';
-
 import React from "react";
 import { CreateTokenForm } from "./CreateTokenForm";
 import { Box, Container } from "@mui/material";
