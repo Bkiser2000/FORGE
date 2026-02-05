@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import {
   Box,
   Button,
@@ -12,14 +13,13 @@ import {
 import { ForgeClient } from '../lib/forge-client';
 
 interface CreateTokenFormProps {
-  wallet: any;
   onSuccess?: (txSignature: string) => void;
 }
 
 export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
-  wallet,
   onSuccess,
 }) => {
+  const { connected, publicKey, signTransaction } = useWallet();
   const [name, setName] = useState('');
   const [symbol, setSymbol] = useState('');
   const [decimals, setDecimals] = useState(9);
@@ -28,7 +28,7 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleCreateToken = async () => {
-    if (!wallet || !wallet.connected) {
+    if (!connected || !publicKey) {
       setMessage({ type: 'error', text: 'Please connect your wallet first' });
       return;
     }
@@ -42,6 +42,7 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
     setMessage(null);
 
     try {
+      const wallet = { publicKey, signTransaction };
       const client = new ForgeClient(wallet);
       const tx = await client.createToken({
         name,

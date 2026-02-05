@@ -1,4 +1,5 @@
 import React, { useState, useContext } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletContext } from "@/pages/_app";
 
 interface TokenConfig {
@@ -12,7 +13,8 @@ interface TokenConfig {
 
 const TokenCreator: React.FC = () => {
   const walletContext = useContext(WalletContext);
-  const { connectedWallet, selectedChain } = walletContext || {};
+  const { selectedChain } = walletContext || {};
+  const { connected, publicKey } = useWallet();
 
   const [tokenConfig, setTokenConfig] = useState<TokenConfig>({
     name: "",
@@ -39,7 +41,7 @@ const TokenCreator: React.FC = () => {
   const handleCreateToken = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!connectedWallet) {
+    if (!connected || !publicKey) {
       alert("Please connect your wallet first");
       return;
     }
@@ -232,15 +234,15 @@ const TokenCreator: React.FC = () => {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading || !connectedWallet}
+            disabled={loading || !connected}
             className={`w-full btn-primary py-4 text-lg font-semibold transition ${
-              loading || !connectedWallet ? "opacity-50 cursor-not-allowed" : ""
+              loading || !connected ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
             {loading ? "Creating Token..." : "Create Token"}
           </button>
 
-          {!connectedWallet && (
+          {!connected && (
             <p className="text-center text-yellow-400 text-sm">
               ⚠️ Please connect your wallet to create a token
             </p>
