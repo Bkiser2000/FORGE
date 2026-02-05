@@ -16,65 +16,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify Solana Tools Installation
+      - name: Install Rust
         run: |
-          echo "=== Checking Solana Tools ==="
-          echo "PATH: $PATH"
-          echo ""
-          echo "=== Solana Version ==="
-          solana --version || echo "solana command not found"
-          echo ""
-          echo "=== Cargo Version ==="
-          cargo --version || echo "cargo command not found"
-          echo ""
-          echo "=== Checking cargo-build-sbf ==="
-          if command -v cargo-build-sbf &> /dev/null; then
-            echo "✓ cargo-build-sbf found at: $(which cargo-build-sbf)"
-            cargo-build-sbf --version || echo "Failed to get version"
-          else
-            echo "✗ cargo-build-sbf NOT found in PATH"
-          fi
+          echo "=== Installing Rust ==="
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source $HOME/.cargo/env
+          rustc --version
+          cargo --version
 
       - name: Build Solana Contract
         working-directory: ./contracts/solana
         run: |
-          echo "=== Checking environment ==="
-          which cargo || echo "cargo not in PATH"
-          which rustc || echo "rustc not in PATH"
+          source $HOME/.cargo/env
           
-          # Try to find and source Rust installation
-          if [ -f ~/.cargo/env ]; then
-            echo "Sourcing ~/.cargo/env"
-            source ~/.cargo/env
-          fi
-          
-          # Check again
-          echo "After sourcing: $(which cargo || echo 'cargo still not found')"
+          echo "=== Checking cargo ==="
+          which cargo && cargo --version
           
           # Fix lock file version
           if [ -f Cargo.lock ]; then
             sed -i 's/^version = 4/version = 3/' Cargo.lock
           fi
           
-          echo "=== Starting build ==="
-          # Try with full paths if needed
-          if [ -f ~/.cargo/bin/cargo ]; then
-            ~/.cargo/bin/cargo build --release --target sbf-solana-solana
-          elif command -v cargo &> /dev/null; then
-            cargo build --release --target sbf-solana-solana
-          else
-            # As last resort, try cargo-build-sbf even though cargo is missing
-            /usr/bin/cargo-build-sbf || echo "Build failed - cargo not available"
-          fi
+          echo "=== Starting build with cargo-build-sbf ==="
+          cargo-build-sbf
 
       - name: Verify Build Output
         working-directory: ./contracts/solana
         run: |
           ls -lah target/deploy/ || echo "Deploy directory not found"
           if [ -f target/deploy/forge_solana.so ]; then
+            echo "✓ Build successful!"
             file target/deploy/forge_solana.so
           else
-            echo "Build output not found at expected location"
+            echo "✗ Build output not found"
             find . -name "*.so" -type f 2>/dev/null || echo "No .so files found"
           fi
 
