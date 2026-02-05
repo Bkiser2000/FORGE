@@ -116,33 +116,9 @@ export class ForgeClient {
 
       console.log('✓ IDL loaded successfully:', (idl as any).name);
       
-      // The Anchor Program constructor is failing due to IDL structure issues
-      // Let's try to diagnose and fix the IDL
-      console.log('IDL Keys:', Object.keys(idl || {}).sort());
-      console.log('Instructions:', idl.instructions.map((i: any) => i.name));
-      console.log('Accounts:', idl.accounts?.map((a: any) => a.name) || []);
-      console.log('Creating Program instance with IDL...');
-      console.log('PROGRAM_ID:', PROGRAM_ID.toString());
-      console.log('Provider wallet:', this.provider.wallet.publicKey.toString());
+      // Build transaction manually without using anchor.Program to avoid "_bn" parsing error
+      console.log('Building createToken instruction manually...');
       
-      let program: any;
-      try {
-        // Create the Program instance with the corrected IDL
-        console.log('Attempting new Program() constructor...');
-        // Anchor 0.32.1 Program signature seems to be: new Program(idl, provider, coder?)
-        const idlWithProgramId = { ...idl, metadata: { address: PROGRAM_ID.toString() } };
-        program = new anchor.Program(idlWithProgramId as any, this.provider);
-        console.log('✓ Program instance created successfully');
-      } catch (programErr) {
-        console.error('Program creation failed:', programErr);
-        if (programErr instanceof Error) {
-          console.error('Error name:', programErr.name);
-          console.error('Error message:', programErr.message);
-          console.error('Error stack:', programErr.stack);
-        }
-        throw new Error(`Failed to instantiate Program: ${programErr instanceof Error ? programErr.message : String(programErr)}`);
-      }
-
       // Generate keypairs for mint and tokenConfig accounts
       const mint = anchor.web3.Keypair.generate();
       const tokenConfig = anchor.web3.Keypair.generate();
@@ -158,43 +134,86 @@ export class ForgeClient {
       );
 
       console.log('ownerTokenAccount:', ownerTokenAccount[0].toString());
-
-      // Build and send transaction
-      console.log('Building createToken transaction...');
-      console.log('Args:', {
-        name: params.name,
-        symbol: params.symbol,
-        decimals: params.decimals,
-        initialSupply: params.initialSupply,
-        initialSupplyBN: new BN(params.initialSupply).toString()
+      
+      // Encode the arguments manually to avoid Anchor parsing
+      const buffer = Buffer.alloc(1000);
+      let offset = 0;
+      
+      // Discriminator (8 bytes for createToken instruction)
+      const discriminator = anchor.utils.sha256([Buffer.from("global"), Buffer.from("createToken")]).slice(0, 8);
+      discriminator.copy(buffer, offset);
+      offset += 8;
+      
+      // Encode string arguments with length prefix
+      const nameBuffer = Buffer.from(params.name, 'utf8');
+      buffer.writeUInt32LE(nameBuffer.length, offset);
+      offset += 4;
+      nameBuffer.copy(buffer, offset);
+      offset += nameBuffer.length;
+      
+      const symbolBuffer = Buffer.from(params.symbol, 'utf8');
+      buffer.writeUInt32LE(symbolBuffer.length, offset);
+      offset += 4;
+      symbolBuffer.copy(buffer, offset);
+      offset += symbolBuffer.length;
+      
+      // Decimals (u8)
+      buffer.writeUInt8(params.decimals, offset);
+      offset += 1;
+      
+      // InitialSupply (u64 - as little-endian)
+      new BN(params.initialSupply).toBuffer('le', 8).copy(buffer, offset);
+      offset += 8;
+      
+      const instructionData = buffer.slice(0, offset);
+      
+      console.log('✓ Instruction data built, length:', instructionData.length);
+      
+      // Create the instruction
+      const instruction = new anchor.web3.TransactionInstruction({
+        programId: PROGRAM_ID,
+        keys: [
+          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
+          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
+          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
+          { pubkey: ownerTokenAccount[0], isSigner: true, isWritable: true },
+          { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false },
+          { pubkey: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"), isSigner: false, isWritable: false },
+          { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+        ],
+        data: instructionData,
       });
       
-      console.log('Getting method builder...');
-      const methodBuilder = program.methods.createToken(
-        params.name,
-        params.symbol,
-        params.decimals,
-        new BN(params.initialSupply)
-      );
-      console.log('✓ Method builder created');
+      console.log('✓ Instruction created');
       
-      const accountsBuilder = methodBuilder.accounts({
-        payer: this.provider.wallet.publicKey,
-        tokenConfig: tokenConfig.publicKey,
-        mint: mint.publicKey,
-        ownerTokenAccount: ownerTokenAccount[0],
-        systemProgram: anchor.web3.SystemProgram.programId,
-        tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      });
-      console.log('✓ Accounts set');
+      // Build transaction
+      const transaction = new anchor.web3.Transaction().add(instruction);
+      transaction.feePayer = this.provider.wallet.publicKey;
       
-      const signersBuilder = accountsBuilder.signers([mint, tokenConfig]);
-      console.log('✓ Signers set');
+      // Get recent blockhash
+      const { blockhash } = await this.connection.getLatestBlockhash('confirmed');
+      transaction.recentBlockhash = blockhash;
       
-      const tx = await signersBuilder.rpc();
-      console.log('✓ Token created successfully! Tx:', tx);
-      return tx;
+      console.log('✓ Transaction built, signing...');
+      
+      // Sign transaction with keypairs
+      transaction.sign(mint, tokenConfig);
+      
+      // Sign with wallet
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+      
+      console.log('✓ Transaction signed, sending...');
+      
+      // Send transaction
+      const signature = await this.connection.sendRawTransaction(signedTx.serialize());
+      
+      console.log('✓ Transaction sent! Signature:', signature);
+      
+      // Wait for confirmation
+      const confirmation = await this.connection.confirmTransaction(signature, 'confirmed');
+      console.log('✓ Transaction confirmed');
+      
+      return signature;
     } catch (error) {
       console.error("=== Error Creating Token ===");
       console.error('Error:', error);
