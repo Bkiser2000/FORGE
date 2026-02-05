@@ -10,8 +10,3 @@ crate-type = ["cdylib"]
 anchor-lang = "0.28"
 anchor-spl = "0.28"
 spl-token = "4"
-
-[profile.release]
-overflow-checks = true
-lto = true
-codegen-units = 1
