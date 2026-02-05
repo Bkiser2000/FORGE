@@ -199,14 +199,14 @@ export class ForgeClient {
       console.log('  tokenConfig:', tokenConfig.publicKey.toString());
       console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
       
-      // Build instruction using Anchor's method builder
-      console.log('Building createToken instruction via Anchor...');
-      const instruction = await program.methods
+      // Use Anchor's rpc() method which handles serialization and signing automatically
+      console.log('Sending createToken transaction via Anchor rpc()...');
+      const signature = await program.methods
         .createToken(
           params.name,
           params.symbol,
           params.decimals,
-          new BN(params.initialSupply)
+          params.initialSupply  // Pass as plain number, not BN
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
@@ -217,72 +217,12 @@ export class ForgeClient {
           tokenProgram: getTokenProgramId(),
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
-        .instruction();
+        .signers([mint, tokenConfig, ownerTokenAccount])
+        .rpc();
       
-      console.log('✓ Instruction built successfully');
-      
-      // Build transaction
-      const transaction = new anchor.web3.Transaction().add(instruction);
-      transaction.feePayer = this.provider.wallet.publicKey;
-      
-      // Get recent blockhash - do this as late as possible, right before signing
-      console.log('Getting fresh blockhash...');
-      const { blockhash } = await this.getConnection().getLatestBlockhash('finalized');
-      transaction.recentBlockhash = blockhash;
-      console.log('✓ Got blockhash:', blockhash);
-      
-      console.log('✓ Transaction built, signing...');
-      
-      // Sign transaction with keypairs
-      transaction.sign(mint, tokenConfig, ownerTokenAccount);
-      
-      // Sign with wallet
-      const signedTx = await this.provider.wallet.signTransaction(transaction);
-      
-      console.log('✓ Transaction signed, sending...');
-      
-      // Send transaction with retry logic for blockhash expiration
-      let signature: string;
-      let retries = 3;
-      
-      while (retries > 0) {
-        try {
-          // Send transaction
-          signature = await this.getConnection().sendRawTransaction(signedTx.serialize(), {
-            skipPreflight: false,
-            preflightCommitment: 'confirmed',
-          });
-          console.log('✓ Transaction sent! Signature:', signature);
-          break;
-        } catch (sendErr) {
-          retries--;
-          if (retries > 0 && sendErr instanceof Error && sendErr.message.includes('Blockhash not found')) {
-            console.warn('Blockhash expired, retrying with fresh blockhash...', sendErr.message);
-            
-            // Get a fresh blockhash and re-sign
-            const { blockhash: newBlockhash } = await this.getConnection().getLatestBlockhash('finalized');
-            const newTransaction = new anchor.web3.Transaction().add(instruction);
-            newTransaction.feePayer = this.provider.wallet.publicKey;
-            newTransaction.recentBlockhash = newBlockhash;
-            newTransaction.sign(mint, tokenConfig, ownerTokenAccount);
-            const newSignedTx = await this.provider.wallet.signTransaction(newTransaction);
-            
-            // Update for next attempt
-            Object.assign(signedTx, newSignedTx);
-          } else {
-            console.error('Failed to send transaction:', sendErr);
-            throw sendErr;
-          }
-        }
-      }
-      
-      if (!signature!) {
-        throw new Error('Failed to send transaction after retries');
-      }
-      
-      // Wait for confirmation
+      console.log('✓ Transaction sent! Signature:', signature);
       console.log('Waiting for transaction confirmation...');
-      const confirmation = await this.getConnection().confirmTransaction(signature, 'confirmed');
+      await this.getConnection().confirmTransaction(signature, 'confirmed');
       console.log('✓ Transaction confirmed');
       
       return signature;
