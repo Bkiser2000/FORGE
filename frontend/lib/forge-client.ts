@@ -1,6 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Idl } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
+import BN from "bn.js";
 
 const PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
 const DEVNET_RPC = "https://api.devnet.solana.com";
@@ -127,7 +128,7 @@ export class ForgeClient {
       console.log('  mint:', mint.publicKey.toString());
       console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      const supplyAmount = new anchor.BN(params.initialSupply * Math.pow(10, params.decimals));
+      const supplyAmount = new BN(params.initialSupply * Math.pow(10, params.decimals));
       console.log('Supply amount:', supplyAmount.toString());
 
       console.log('Building transaction...');
@@ -179,7 +180,7 @@ export class ForgeClient {
       // This would need the actual mint and token account addresses
       // In a real implementation, you'd fetch these from chain
       const tx = await program.methods
-        .mintTokens(new anchor.BN(amount))
+        .mintTokens(new BN(amount))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
@@ -205,7 +206,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .burnTokens(new anchor.BN(amount))
+        .burnTokens(new BN(amount))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
