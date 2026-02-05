@@ -1,16 +1,16 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { BN } from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
 // Use string representations directly - avoid creating multiple PublicKey objects
 const PROGRAM_ID_STRING = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF";
-const TOKEN_PROGRAM_ID_STRING = "TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ";
 
 // Cache ONLY the program ID (which we need first)
-// TOKEN_PROGRAM_ID will be created on-demand from string using base58 decode
+// TOKEN_PROGRAM_ID is imported from @solana/spl-token
 let PROGRAM_ID: PublicKey | null = null;
 
 const initializePublicKeysEagerly = () => {
@@ -37,21 +37,16 @@ const getProgramId = (): PublicKey => {
   return PROGRAM_ID;
 };
 
-// Token program ID stays as a string - convert to PublicKey only when building instructions
-const getTokenProgramIdString = (): string => {
-  return TOKEN_PROGRAM_ID_STRING;
+// Token program ID is imported from @solana/spl-token - no creation needed
+const getTokenProgramId = (): PublicKey => {
+  if (typeof window === 'undefined') {
+    throw new Error("getTokenProgramId() called on server");
+  }
+  return TOKEN_PROGRAM_ID;
 };
 
-const getTokenProgramIdAsPublicKey = (): PublicKey => {
-  if (typeof window === 'undefined') {
-    throw new Error("getTokenProgramIdAsPublicKey() called on server");
-  }
-  try {
-    return new PublicKey(TOKEN_PROGRAM_ID_STRING);
-  } catch (err) {
-    console.error('Failed to create TOKEN_PROGRAM_ID PublicKey:', err);
-    throw err;
-  }
+const getTokenProgramIdString = (): string => {
+  return TOKEN_PROGRAM_ID.toString();
 };
 
 export interface CreateTokenParams {
@@ -239,7 +234,7 @@ export class ForgeClient {
       console.log('System program:', systemProgram.toString());
       console.log('Rent sysvar:', rentSysvar.toString());
       
-      // Create keys array - use pre-initialized PROGRAM_ID and token program ID string
+      // Create keys array - use pre-initialized PROGRAM_ID and imported TOKEN_PROGRAM_ID
       console.log('Creating instruction with keys...');
       let keys: any[];
       try {
@@ -251,16 +246,9 @@ export class ForgeClient {
         
         console.log('Pre-collected existing PublicKeys');
         
-        // Create TOKEN_PROGRAM_ID only when we absolutely need it
-        // This is the latest point before using it
-        let tokenProgramIdKey: PublicKey;
-        try {
-          tokenProgramIdKey = getTokenProgramIdAsPublicKey();
-          console.log('✓ Got token program ID:', tokenProgramIdKey.toString());
-        } catch (tpErr) {
-          console.error('Error creating token program ID PublicKey:', tpErr);
-          throw new Error(`Failed to create token program ID: ${tpErr instanceof Error ? tpErr.message : String(tpErr)}`);
-        }
+        // Get TOKEN_PROGRAM_ID from imported constant (no creation)
+        const tokenProgramIdKey = getTokenProgramId();
+        console.log('✓ Got token program ID:', tokenProgramIdKey.toString());
         
         keys = [
           { pubkey: walletPubkey, isSigner: true, isWritable: true },
@@ -359,7 +347,7 @@ export class ForgeClient {
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
-          tokenProgram: getTokenProgramIdAsPublicKey(),
+          tokenProgram: getTokenProgramId(),
         })
         .rpc();
 
@@ -386,7 +374,7 @@ export class ForgeClient {
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
-          tokenProgram: getTokenProgramIdAsPublicKey(),
+          tokenProgram: getTokenProgramId(),
         })
         .rpc();
 
