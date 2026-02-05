@@ -1,4 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
+import { AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
 
 const PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
@@ -24,14 +25,14 @@ export interface TokenConfig {
 export class ForgeClient {
   private connection: Connection;
   private wallet: any;
-  private provider: anchor.AnchorProvider | null = null;
+  private provider: AnchorProvider | null = null;
 
   constructor(wallet: any) {
     this.connection = new Connection(DEVNET_RPC, "confirmed");
     this.wallet = wallet;
     
     if (wallet) {
-      this.provider = new anchor.AnchorProvider(
+      this.provider = new AnchorProvider(
         this.connection,
         wallet,
         { commitment: "confirmed" }
