@@ -1,8 +1,16 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { CreateTokenForm } from "./CreateTokenForm";
 import { Box, Container } from "@mui/material";
 
 const TokenCreator: React.FC = () => {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) return null;
+
   return (
     <section className="w-full py-12 px-4">
       <Container maxWidth="sm">

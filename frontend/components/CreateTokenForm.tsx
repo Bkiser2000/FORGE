@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import {
   Box,
@@ -23,6 +23,7 @@ interface CreateTokenFormProps {
 export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
   onSuccess,
 }) => {
+  const [isClient, setIsClient] = useState(false);
   const { connected, publicKey, signAllTransactions, signTransaction } = useWallet();
   const { addToken } = useTokens();
   const [name, setName] = useState('');
@@ -31,6 +32,14 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
   const [initialSupply, setInitialSupply] = useState(1000);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return null;
+  }
 
   const handleCreateToken = async () => {
     console.log('handleCreateToken called');
