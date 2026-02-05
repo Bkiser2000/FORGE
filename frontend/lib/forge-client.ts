@@ -3,8 +3,16 @@ import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { BN } from "bn.js";
+import { createHash } from "crypto";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
+
+// Compute Anchor instruction discriminator from instruction name
+const computeDiscriminator = (ixName: string): Buffer => {
+  const name = `instruction:${ixName}`;
+  const hash = createHash('sha256').update(name).digest();
+  return hash.slice(0, 8);
+};
 
 // Use string representations directly - avoid creating multiple PublicKey objects
 const PROGRAM_ID_STRING = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF";
@@ -193,10 +201,10 @@ export class ForgeClient {
       const buffer = Buffer.alloc(1000);
       let offset = 0;
       
-      // Discriminator (8 bytes for createToken instruction)
-      // Instead of hashing, we'll use a simple discriminator for the instruction
-      // For Solana Playground contracts, the first instruction is typically 0x03 (discriminator)
-      Buffer.from([0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]).copy(buffer, offset);
+      // Discriminator (8 bytes) - computed from "instruction:createToken"
+      const discriminator = computeDiscriminator('createToken');
+      console.log('Computed discriminator:', discriminator.toString('hex'));
+      discriminator.copy(buffer, offset);
       offset += 8;
       
       // Encode string arguments with length prefix
