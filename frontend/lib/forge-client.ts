@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Idl } from "@coral-xyz/anchor";
+import { AnchorProvider, Idl, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
 
 const PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
@@ -114,31 +114,17 @@ export class ForgeClient {
       }
 
       console.log('✓ IDL loaded successfully:', idl.name, '- Version:', idl.version);
-      console.log('IDL type:', typeof idl, 'IDL keys:', Object.keys(idl || {}).slice(0, 10));
-      console.log('Program ID:', PROGRAM_ID.toString());
-      console.log('Provider wallet:', this.provider?.wallet?.publicKey?.toString());
       
       let program;
       try {
-        console.log('Step 1: Checking IDL structure...');
-        console.log('  Has metadata:', !!(idl as any).metadata);
-        console.log('  Has accounts:', !!(idl as any).accounts);
-        console.log('  Has instructions:', Array.isArray((idl as any).instructions) ? (idl as any).instructions.length : 'not array');
-        
-        // Add metadata if missing (required for Anchor 0.32+)
-        const idlWithMetadata = {
-          ...idl,
-          metadata: (idl as any).metadata || { name: "forge_solana", spec: "0.1.0" }
-        };
-        
-        console.log('Step 2: Creating Program instance...');
-        // Use any cast to bypass TypeScript issues
-        program = new (anchor.Program as any)(idlWithMetadata, PROGRAM_ID, this.provider);
+        console.log('Creating Program instance...');
+        // Anchor Program constructor: new Program(idl, programId, provider)
+        // Using any cast to bypass TypeScript strictness
+        program = new (Program as any)(idl, PROGRAM_ID, this.provider);
         console.log('✓ Program instance created successfully');
       } catch (err1) {
-        console.error('❌ Constructor failed:', err1 instanceof Error ? err1.message : String(err1));
-        console.error('Full error:', err1);
-        throw new Error(`Failed to create Program: ${err1 instanceof Error ? err1.message : String(err1)}`);
+        console.error('❌ Program creation failed:', err1 instanceof Error ? err1.message : String(err1));
+        throw new Error(`Program creation failed: ${err1 instanceof Error ? err1.message : String(err1)}`);
       }
 
       // Generate keypairs for new accounts
@@ -146,23 +132,17 @@ export class ForgeClient {
       const mint = anchor.web3.Keypair.generate();
       const ownerTokenAccount = anchor.web3.Keypair.generate();
       
-      console.log('Generated keypairs:');
-      console.log('  tokenConfig:', tokenConfig.publicKey.toString());
-      console.log('  mint:', mint.publicKey.toString());
-      console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
+      console.log('✓ Generated keypairs');
 
       // Convert supply to the correct format for u64
       const supplyWithDecimals = params.initialSupply * Math.pow(10, params.decimals);
-      console.log('Supply calculation:', { initialSupply: params.initialSupply, decimals: params.decimals, total: supplyWithDecimals });
-      
-      // Pass supply amount directly - Anchor will handle conversion
       const supplyAmount = Math.floor(supplyWithDecimals);
-      console.log('Supply amount:', supplyAmount, 'Type:', typeof supplyAmount);
+      console.log('✓ Supply amount calculated:', supplyAmount);
 
       console.log('Building transaction...');
       let builder;
       try {
-        builder = program.methods
+        builder = (program as any).methods
           .createToken(
             params.name,
             params.symbol,
