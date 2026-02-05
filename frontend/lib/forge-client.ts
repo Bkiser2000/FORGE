@@ -128,10 +128,29 @@ export class ForgeClient {
       console.log('  tokenConfig:', tokenConfig.publicKey.toString());
 
       // Create the ownerTokenAccount address (PDA or derived address)
-      const ownerTokenAccount = await anchor.web3.PublicKey.findProgramAddress(
-        [Buffer.from("token-account"), this.provider.wallet.publicKey.toBuffer()],
-        new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ")
-      );
+      console.log('Finding program address for ownerTokenAccount...');
+      let ownerTokenAccount: [PublicKey, number];
+      try {
+        const tokenProgramId = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+        console.log('Token program ID:', tokenProgramId.toString());
+        
+        // Try the sync version first
+        if (anchor.web3.PublicKey.findProgramAddressSync) {
+          ownerTokenAccount = anchor.web3.PublicKey.findProgramAddressSync(
+            [Buffer.from("token-account"), this.provider.wallet.publicKey.toBuffer()],
+            tokenProgramId
+          );
+        } else {
+          // Fall back to async version
+          ownerTokenAccount = await anchor.web3.PublicKey.findProgramAddress(
+            [Buffer.from("token-account"), this.provider.wallet.publicKey.toBuffer()],
+            tokenProgramId
+          );
+        }
+      } catch (pda_err) {
+        console.error('PDA creation error:', pda_err);
+        throw new Error(`Failed to derive program address: ${pda_err instanceof Error ? pda_err.message : String(pda_err)}`);
+      }
 
       console.log('ownerTokenAccount:', ownerTokenAccount[0].toString());
       
@@ -169,8 +188,16 @@ export class ForgeClient {
       const instructionData = buffer.slice(0, offset);
       
       console.log('✓ Instruction data built, length:', instructionData.length);
+      console.log('Building instruction with accounts...');
       
-      // Create the instruction
+      // Create PublicKey constants safely
+      const systemProgram = anchor.web3.SystemProgram.programId;
+      const tokenProgram = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+      const rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
+      
+      console.log('System program:', systemProgram.toString());
+      console.log('Token program:', tokenProgram.toString());
+      console.log('Rent sysvar:', rentSysvar.toString());
       const instruction = new anchor.web3.TransactionInstruction({
         programId: PROGRAM_ID,
         keys: [
@@ -178,9 +205,9 @@ export class ForgeClient {
           { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
           { pubkey: mint.publicKey, isSigner: true, isWritable: true },
           { pubkey: ownerTokenAccount[0], isSigner: true, isWritable: true },
-          { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false },
-          { pubkey: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"), isSigner: false, isWritable: false },
-          { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+          { pubkey: systemProgram, isSigner: false, isWritable: false },
+          { pubkey: tokenProgram, isSigner: false, isWritable: false },
+          { pubkey: rentSysvar, isSigner: false, isWritable: false },
         ],
         data: instructionData,
       });
