@@ -140,14 +140,22 @@ export class ForgeClient {
 
       if (!idl) throw new Error("IDL is null/undefined");
 
-      // Compute discriminator for createToken instruction
-      const instructionName = 'createToken';
+      // Compute discriminator for createToken instruction using Anchor's approach
       const discriminatorHash = await crypto.subtle.digest(
         'SHA-256',
-        new TextEncoder().encode(`instruction:${instructionName}`) as BufferSource
+        new TextEncoder().encode('instruction:createToken') as BufferSource
       );
       const discriminator = new Uint8Array(discriminatorHash).slice(0, 8);
-      console.log('Discriminator:', Array.from(discriminator).map(b => b.toString(16).padStart(2, '0')).join(''));
+      console.log('Computed discriminator:', Array.from(discriminator).map(b => b.toString(16).padStart(2, '0')).join(' '));
+      console.log('Discriminator as decimal:', Array.from(discriminator));
+
+      // Try alternative discriminator formats just in case
+      const altDiscriminatorHash = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode('global:instruction:createToken') as BufferSource
+      );
+      const altDiscriminator = new Uint8Array(altDiscriminatorHash).slice(0, 8);
+      console.log('Alternative discriminator (global:):', Array.from(altDiscriminator).map(b => b.toString(16).padStart(2, '0')).join(' '));
 
       // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
@@ -195,6 +203,7 @@ export class ForgeClient {
 
       // Trim data to actual size
       const instructionData = data.slice(0, offset);
+      console.log('Encoded instruction data (hex):', instructionData.toString('hex'));
       console.log('Encoded instruction data length:', instructionData.length);
 
       // Build instruction
