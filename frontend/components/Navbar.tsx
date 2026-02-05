@@ -1,6 +1,9 @@
 import React, { useContext } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { AppBar, Toolbar, Typography, Button, Box, Select, MenuItem } from "@mui/material";
 import { WalletContext } from "@/pages/_app";
+import Image from "next/image";
 
 interface NavbarProps {
   currentPage: "home" | "create" | "dashboard";
@@ -9,32 +12,47 @@ interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const walletContext = useContext(WalletContext);
-  const { connectedWallet, setConnectedWallet, selectedChain, setSelectedChain } =
-    walletContext || {};
-
-  const handleConnectWallet = () => {
-    setConnectedWallet?.("0x742d35Cc6634C0532925a3b844Bc9e7595f1e1e4");
-  };
-
-  const handleDisconnect = () => {
-    setConnectedWallet?.(null);
-  };
+  const { selectedChain, setSelectedChain } = walletContext || {};
+  const { connected } = useWallet();
 
   const formatWallet = (wallet: string) => {
     return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
   };
 
   return (
-    <AppBar position="static" sx={{ background: "rgba(34, 34, 34, 0.95)" }}>
-      <Toolbar>
+    <AppBar 
+      position="sticky" 
+      sx={{ 
+        background: "linear-gradient(90deg, #0f1419 0%, #1a1f2e 100%)",
+        borderBottom: "1px solid rgba(255,255,255,0.1)",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+      }}
+    >
+      <Toolbar sx={{ py: 1 }}>
         {/* Logo/Title */}
-        <Typography 
-          variant="h6" 
-          sx={{ flexGrow: 1, cursor: "pointer", fontWeight: "bold" }}
-          onClick={() => onPageChange("home")}
-        >
-          FORGE
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mr: 3 }}>
+          <Image 
+            src="/FORGE.jpeg" 
+            alt="FORGE" 
+            width={40} 
+            height={40}
+            style={{ borderRadius: "8px" }}
+          />
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              cursor: "pointer", 
+              fontWeight: "bold",
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              backgroundClip: "text",
+              WebkitBackgroundClip: "text",
+              color: "transparent",
+            }}
+            onClick={() => onPageChange("home")}
+          >
+            FORGE
+          </Typography>
+        </Box>
 
         {/* Navigation Links */}
         <Box sx={{ display: { xs: "none", md: "flex" }, gap: 3 }}>
@@ -42,9 +60,11 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
             color="inherit" 
             onClick={() => onPageChange("home")}
             sx={{ 
-              color: currentPage === "home" ? "#60a5fa" : "inherit",
+              color: currentPage === "home" ? "#2563eb" : "inherit",
               fontWeight: currentPage === "home" ? "bold" : "normal",
-              "&:hover": { color: "#60a5fa" }
+              textTransform: "none",
+              fontSize: "16px",
+              "&:hover": { color: "#2563eb" }
             }}
           >
             Home
@@ -53,20 +73,24 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
             color="inherit" 
             onClick={() => onPageChange("create")}
             sx={{ 
-              color: currentPage === "create" ? "#60a5fa" : "inherit",
+              color: currentPage === "create" ? "#2563eb" : "inherit",
               fontWeight: currentPage === "create" ? "bold" : "normal",
-              "&:hover": { color: "#60a5fa" }
+              textTransform: "none",
+              fontSize: "16px",
+              "&:hover": { color: "#2563eb" }
             }}
           >
-            Create
+            Create Token
           </Button>
           <Button 
             color="inherit" 
             onClick={() => onPageChange("dashboard")}
             sx={{ 
-              color: currentPage === "dashboard" ? "#60a5fa" : "inherit",
+              color: currentPage === "dashboard" ? "#2563eb" : "inherit",
               fontWeight: currentPage === "dashboard" ? "bold" : "normal",
-              "&:hover": { color: "#60a5fa" }
+              textTransform: "none",
+              fontSize: "16px",
+              "&:hover": { color: "#2563eb" }
             }}
           >
             Dashboard
@@ -74,10 +98,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
         </Box>
 
         {/* Right Controls */}
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center", ml: 2 }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center", ml: "auto" }}>
           {/* Chain Selector */}
           <Select
-            value={selectedChain}
+            value={selectedChain || "solana"}
             onChange={(e) => setSelectedChain?.(e.target.value as "solana" | "cronos")}
             sx={{
               display: { xs: "none", sm: "flex" },
@@ -90,48 +114,21 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
                 borderColor: "rgba(255, 255, 255, 0.3)"
               },
               "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                borderColor: "#60a5fa"
+                borderColor: "#2563eb"
               }
             }}
           >
-            <MenuItem value="cronos">Cronos</MenuItem>
-            <MenuItem value="solana">Solana</MenuItem>
+            <MenuItem value="solana">🔗 Solana</MenuItem>
+            <MenuItem value="cronos">🔗 Cronos</MenuItem>
           </Select>
 
           {/* Wallet Button */}
-          {connectedWallet ? (
-            <Button
-              onClick={handleDisconnect}
-              sx={{
-                color: "white",
-                backgroundColor: "rgba(220, 38, 38, 0.2)",
-                border: "1px solid rgba(220, 38, 38, 0.5)",
-                textTransform: "none",
-                fontSize: "0.875rem",
-                "&:hover": {
-                  backgroundColor: "rgba(220, 38, 38, 0.3)"
-                }
-              }}
-            >
-              {formatWallet(connectedWallet)}
-            </Button>
-          ) : (
-            <Button
-              onClick={handleConnectWallet}
-              sx={{
-                color: "white",
-                backgroundColor: "#2563eb",
-                textTransform: "none",
-                fontSize: "0.875rem",
-                fontWeight: "bold",
-                "&:hover": {
-                  backgroundColor: "#1d4ed8"
-                }
-              }}
-            >
-              Connect
-            </Button>
-          )}
+          <WalletMultiButton style={{
+            backgroundColor: connected ? "#10b981" : "#2563eb",
+            fontWeight: "bold",
+            padding: "8px 16px",
+            borderRadius: "8px",
+          }} />
         </Box>
       </Toolbar>
     </AppBar>

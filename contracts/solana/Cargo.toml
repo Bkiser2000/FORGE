@@ -1,6 +1,6 @@
 [workspace]
 members = ["programs/forge_solana"]
-resolver = "1"
+resolver = "2"
 
 [workspace.package]
 version = "0.1.0"

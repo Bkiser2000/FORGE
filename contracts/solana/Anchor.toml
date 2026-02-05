@@ -1,18 +1,19 @@
-{
-  "version": "0.1.0",
-  "name": "forge-solana",
-  "programs": {
-    "localnet": {
-      "forge_solana": "ForgeYourTokenProgramId11111111"
-    },
-    "devnet": {
-      "forge_solana": "ForgeYourTokenProgramId11111111"
-    },
-    "mainnet": {
-      "forge_solana": "ForgeYourTokenProgramId11111111"
-    }
-  },
-  "metadata": {
-    "address": "ForgeYourTokenProgramId11111111"
-  }
-}
+[package]
+name = "forge-solana"
+version = "0.1.0"
+
+[programs.devnet]
+forge_solana = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF"
+
+[programs.localnet]
+forge_solana = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF"
+
+[programs.mainnet]
+forge_solana = "11111111111111111111111111111111"
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/devnet-wallet.json"
+
+[scripts]
+test = "anchor test"

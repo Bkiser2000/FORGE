@@ -7,6 +7,6 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-anchor-lang = "0.30"
-anchor-spl = "0.30"
-spl-token = "4.0"
+anchor-lang = "0.29"
+anchor-spl = "0.29"
+spl-token = "7.0"

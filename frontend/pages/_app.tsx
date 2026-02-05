@@ -3,6 +3,7 @@ import { useState } from "react";
 import React from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import { SolanaWalletProvider } from "@/components/SolanaWalletProvider";
 import "../styles/globals.css";
 
 // Simple context for wallet connection
@@ -29,22 +30,24 @@ const theme = createTheme({
 
 function App({ Component, pageProps }: AppProps) {
   const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
-  const [selectedChain, setSelectedChain] = useState<"solana" | "cronos">("cronos");
+  const [selectedChain, setSelectedChain] = useState<"solana" | "cronos">("solana");
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <WalletContext.Provider
-        value={{
-          connectedWallet,
-          setConnectedWallet,
-          selectedChain,
-          setSelectedChain,
-        }}
-      >
-        <Component {...pageProps} />
-      </WalletContext.Provider>
-    </ThemeProvider>
+    <SolanaWalletProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <WalletContext.Provider
+          value={{
+            connectedWallet,
+            setConnectedWallet,
+            selectedChain,
+            setSelectedChain,
+          }}
+        >
+          <Component {...pageProps} />
+        </WalletContext.Provider>
+      </ThemeProvider>
+    </SolanaWalletProvider>
   );
 }
 
