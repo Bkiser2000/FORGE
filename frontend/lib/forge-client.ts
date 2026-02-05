@@ -114,8 +114,26 @@ export class ForgeClient {
       }
 
       console.log('✓ IDL loaded successfully:', idl.name, '- Version:', idl.version);
-      const program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
-      console.log('✓ Program instance created');
+      console.log('Program ID:', PROGRAM_ID.toString());
+      console.log('Provider:', this.provider ? 'initialized' : 'not initialized');
+      
+      let program;
+      try {
+        // Try different constructor signatures
+        console.log('Attempting to create Program instance...');
+        program = new anchor.Program(idl as Idl, PROGRAM_ID, this.provider);
+        console.log('✓ Program instance created');
+      } catch (programErr) {
+        console.error('First attempt failed:', programErr);
+        try {
+          console.log('Trying alternative Program construction...');
+          program = new (anchor.Program as any)(idl, PROGRAM_ID.toString(), this.provider);
+          console.log('✓ Program instance created (alternative)');
+        } catch (altErr) {
+          console.error('Alternative attempt also failed:', altErr);
+          throw new Error(`Failed to create Program instance: ${programErr instanceof Error ? programErr.message : String(programErr)}`);
+        }
+      }
 
       // Generate keypairs for new accounts
       const tokenConfig = anchor.web3.Keypair.generate();
