@@ -50,7 +50,7 @@ jobs:
 
       - name: Build Solana Contract
         shell: bash
-        working-directory: ./contracts/solana
+        working-directory: ./contracts/solana/programs/forge_solana
         run: |
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
@@ -58,31 +58,21 @@ jobs:
           echo "=== Checking cargo ==="
           which cargo && cargo --version
           
-          echo "=== Checking cargo-build-sbf ==="
-          which cargo-build-sbf || echo "cargo-build-sbf not found"
-          
-          echo "=== Current directory ==="
-          pwd
-          ls -la
-          
-          echo "=== Starting build with cargo-build-sbf ==="
-          cargo-build-sbf --manifest-path programs/forge_solana/Cargo.toml
+          echo "=== Starting build with cargo ==="
+          cargo build --release
           
           echo "=== Build complete ==="
-          find . -name "forge_solana.so" -o -name "*.so" | head -20
 
       - name: Verify Build Output
-        working-directory: ./contracts/solana
+        working-directory: ./contracts/solana/programs/forge_solana
         run: |
-          echo "=== Checking for .so files ==="
-          find . -name "*.so" -type f
-          
-          echo "=== Listing target structure ==="
-          ls -la target/ || echo "No target directory"
+          echo "=== Checking for compiled artifacts ==="
+          find target -name "*.so" -o -name "*.rlib" | head -20
+          ls -la target/release/ 2>/dev/null || echo "Release directory not found"
 
       - name: Upload Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: solana-build-artifacts
-          path: contracts/solana/target/**/*.so
+          path: contracts/solana/programs/forge_solana/target/release/
