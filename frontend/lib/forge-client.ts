@@ -5,22 +5,29 @@ import { BN } from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
-// Lazy-load PublicKeys to avoid errors during SSR
-let PROGRAM_ID: PublicKey | null = null;
-let TOKEN_PROGRAM_ID: PublicKey | null = null;
-
+// Initialize PublicKeys only when in browser environment
 const getProgramId = (): PublicKey => {
-  if (!PROGRAM_ID) {
-    PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+  if (typeof window === 'undefined') {
+    throw new Error("getProgramId() called on server");
   }
-  return PROGRAM_ID;
+  try {
+    return new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+  } catch (err) {
+    console.error("Invalid PROGRAM_ID:", err);
+    throw err;
+  }
 };
 
 const getTokenProgramId = (): PublicKey => {
-  if (!TOKEN_PROGRAM_ID) {
-    TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+  if (typeof window === 'undefined') {
+    throw new Error("getTokenProgramId() called on server");
   }
-  return TOKEN_PROGRAM_ID;
+  try {
+    return new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+  } catch (err) {
+    console.error("Invalid TOKEN_PROGRAM_ID:", err);
+    throw err;
+  }
 };
 
 export interface CreateTokenParams {
@@ -203,7 +210,10 @@ export class ForgeClient {
       const rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
       
       console.log('System program:', systemProgram.toString());
-      console.log('Token program:', getTokenProgramId().toString());
+      
+      // Get token program ID - use string directly to avoid PublicKey creation issues
+      const tokenProgramIdStr = "TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ";
+      console.log('Token program:', tokenProgramIdStr);
       console.log('Rent sysvar:', rentSysvar.toString());
       console.log('Creating instruction with keys...');
       console.log('Keys:', {
@@ -212,7 +222,7 @@ export class ForgeClient {
         mint: mint.publicKey.toString(),
         ownerTokenAccount: ownerTokenAccount.publicKey.toString(),
         systemProgram: systemProgram.toString(),
-        tokenProgram: getTokenProgramId().toString(),
+        tokenProgram: tokenProgramIdStr,
         rentSysvar: rentSysvar.toString(),
       });
       
@@ -224,7 +234,7 @@ export class ForgeClient {
           { pubkey: mint.publicKey, isSigner: true, isWritable: true },
           { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
           { pubkey: systemProgram, isSigner: false, isWritable: false },
-          { pubkey: getTokenProgramId(), isSigner: false, isWritable: false },
+          { pubkey: new PublicKey(tokenProgramIdStr), isSigner: false, isWritable: false },
           { pubkey: rentSysvar, isSigner: false, isWritable: false },
         ],
         data: instructionData,
@@ -289,7 +299,7 @@ export class ForgeClient {
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
-          tokenProgram: getTokenProgramId(),
+          tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
         })
         .rpc();
 
@@ -316,7 +326,7 @@ export class ForgeClient {
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
-          tokenProgram: getTokenProgramId(),
+          tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
         })
         .rpc();
 
