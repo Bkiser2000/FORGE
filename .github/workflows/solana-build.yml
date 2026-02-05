@@ -65,11 +65,11 @@ jobs:
           ls -la Cargo.toml || echo "Root Cargo.toml not found"
           ls -la programs/forge_solana/Cargo.toml || echo "Program Cargo.toml not found"
           
-          echo "=== Verify no lock file exists ==="
-          [ ! -f Cargo.lock ] && echo "✓ No lock file" || echo "✗ Lock file exists"
+          echo "=== Install Anchor CLI ==="
+          cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.0 anchor-cli || true
           
-          echo "=== Starting build with cargo-build-sbf ==="
-          cargo-build-sbf -- -p forge_solana --offline || cargo-build-sbf -- -p forge_solana
+          echo "=== Starting build with anchor ==="
+          anchor build -- -p forge_solana
 
       - name: Verify Build Output
         working-directory: ./contracts/solana
