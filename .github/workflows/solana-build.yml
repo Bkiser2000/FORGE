@@ -30,47 +30,35 @@ jobs:
           apt-get install -y curl build-essential pkg-config
           echo "✓ Dependencies installed"
 
-      - name: Install Rust
-        shell: bash
+      - name: Check Environment
         run: |
-          echo "=== Installing Rust ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --no-modify-path
-          export PATH="$HOME/.cargo/bin:$PATH"
-          rustup install nightly
-          echo "✓ Rust and nightly installed"
-
-      - name: Prepare Build
-        shell: bash
-        working-directory: ./contracts/solana
-        run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
-          echo "=== Remove lock file to avoid v4 issues ==="
-          rm -f Cargo.lock
-          ls -la Cargo.lock || echo "Lock file removed"
+          echo "=== Checking installed tools ==="
+          which rustc && rustc --version
+          which cargo && cargo --version
+          which solana && solana --version
+          echo "=== Environment ready ==="
 
       - name: Build Solana Contract
-        shell: bash
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
-          # Setup Rust environment
-          export PATH="$HOME/.cargo/bin:$PATH"
-          
-          echo "=== Checking cargo ==="
-          which cargo && cargo --version
-          
-          echo "=== Starting build with cargo ==="
-          cargo build --release
-          
-          echo "=== Build complete ==="
+          echo "=== Starting Solana contract build ==="
+          cargo build --release 2>&1
+          BUILD_STATUS=$?
+          echo "=== Build exit code: $BUILD_STATUS ==="
+          exit $BUILD_STATUS
 
       - name: Verify Build Output
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
-          echo "=== Searching for all compiled artifacts ==="
-          find . -type f \( -name "*.so" -o -name "*.a" -o -name "*.rlib" -o -name "forge_solana*" \) 2>/dev/null | head -30
+          echo "=== Directory structure ==="
+          pwd
+          ls -la target/release/ 2>/dev/null || echo "target/release does not exist"
           
-          echo "=== Listing entire target directory ==="
-          find target -type f 2>/dev/null | head -30 || echo "No target directory found"
+          echo "=== All compiled files ==="
+          find . -type f \( -name "*.so" -o -name "*.a" -o -name "*.rlib" \) 2>/dev/null | head -20
+          
+          echo "=== Full target tree ==="
+          find target -type d 2>/dev/null | head -20
 
       - name: Upload Artifacts
         if: success()
