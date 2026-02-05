@@ -2,7 +2,6 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import BN from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
@@ -206,7 +205,7 @@ export class ForgeClient {
           params.name,
           params.symbol,
           params.decimals,
-          new BN(params.initialSupply)  // Wrap as BN for proper serialization
+          new anchor.BN(params.initialSupply)  // Use anchor.BN for proper compatibility
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
@@ -258,7 +257,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .mintTokens(new BN(Math.floor(amount)))
+        .mintTokens(new anchor.BN(Math.floor(amount)))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
@@ -294,7 +293,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .burnTokens(new BN(Math.floor(amount)))
+        .burnTokens(new anchor.BN(Math.floor(amount)))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
