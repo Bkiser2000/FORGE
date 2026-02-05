@@ -202,9 +202,10 @@ export class ForgeClient {
       const buffer = Buffer.alloc(1000);
       let offset = 0;
       
-      // Discriminator (8 bytes) - computed from "instruction:createToken" using Web Crypto API
-      const discriminator = await computeDiscriminator('createToken');
-      console.log('Computed discriminator:', discriminator.toString('hex'));
+      // Discriminator (8 bytes) - Anchor uses snake_case instruction names: "create_token"
+      const discriminator = await computeDiscriminator('create_token');
+      console.log('Computed discriminator for "create_token":', discriminator.toString('hex'));
+      console.log('Discriminator bytes:', Array.from(discriminator).map(b => '0x' + b.toString(16).padStart(2, '0')).join(', '));
       discriminator.copy(buffer, offset);
       offset += 8;
       
