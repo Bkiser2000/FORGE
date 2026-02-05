@@ -5,6 +5,9 @@ import { BN } from "bn.js";
 
 const PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
 const DEVNET_RPC = "https://api.devnet.solana.com";
+const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+const SYSTEM_PROGRAM_ID = anchor.web3.SystemProgram.programId;
+const RENT_SYSVAR_ID = anchor.web3.SYSVAR_RENT_PUBKEY;
 
 export interface CreateTokenParams {
   name: string;
@@ -170,43 +173,19 @@ export class ForgeClient {
       console.log('✓ Instruction data built, length:', instructionData.length);
       console.log('Building instruction with accounts...');
       
-      // Create PublicKey constants safely
-      let systemProgram: PublicKey;
-      let tokenProgram: PublicKey;
-      let rentSysvar: PublicKey;
-      
-      try {
-        systemProgram = anchor.web3.SystemProgram.programId;
-        console.log('✓ System program:', systemProgram.toString());
-      } catch (e) {
-        console.error('Failed to get system program:', e);
-        throw e;
-      }
-      
-      try {
-        tokenProgram = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
-        console.log('✓ Token program:', tokenProgram.toString());
-      } catch (e) {
-        console.error('Failed to create token program PublicKey:', e);
-        throw e;
-      }
-      
-      try {
-        rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
-        console.log('✓ Rent sysvar:', rentSysvar.toString());
-      } catch (e) {
-        console.error('Failed to get rent sysvar:', e);
-        throw e;
-      }
+      // Use pre-defined constants for program IDs
+      console.log('System program:', SYSTEM_PROGRAM_ID.toString());
+      console.log('Token program:', TOKEN_PROGRAM_ID.toString());
+      console.log('Rent sysvar:', RENT_SYSVAR_ID.toString());
       console.log('Creating instruction with keys...');
       console.log('Keys:', {
         payer: this.provider.wallet.publicKey.toString(),
         tokenConfig: tokenConfig.publicKey.toString(),
         mint: mint.publicKey.toString(),
         ownerTokenAccount: ownerTokenAccount.publicKey.toString(),
-        systemProgram: systemProgram.toString(),
-        tokenProgram: tokenProgram.toString(),
-        rentSysvar: rentSysvar.toString(),
+        systemProgram: SYSTEM_PROGRAM_ID.toString(),
+        tokenProgram: TOKEN_PROGRAM_ID.toString(),
+        rentSysvar: RENT_SYSVAR_ID.toString(),
       });
       
       const instruction = new anchor.web3.TransactionInstruction({
@@ -216,9 +195,9 @@ export class ForgeClient {
           { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
           { pubkey: mint.publicKey, isSigner: true, isWritable: true },
           { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
-          { pubkey: systemProgram, isSigner: false, isWritable: false },
-          { pubkey: tokenProgram, isSigner: false, isWritable: false },
-          { pubkey: rentSysvar, isSigner: false, isWritable: false },
+          { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
+          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+          { pubkey: RENT_SYSVAR_ID, isSigner: false, isWritable: false },
         ],
         data: instructionData,
       });
