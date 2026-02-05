@@ -1,9 +1,17 @@
 import Head from "next/head";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
-import TokenCreator from "@/components/TokenCreator";
-import Dashboard from "@/components/Dashboard";
+
+// Dynamic imports to prevent SSR issues with hooks
+const TokenCreator = dynamic(() => import("@/components/TokenCreator"), {
+  ssr: false,
+});
+
+const Dashboard = dynamic(() => import("@/components/Dashboard"), {
+  ssr: false,
+});
 
 type Page = "home" | "create" | "dashboard";
 

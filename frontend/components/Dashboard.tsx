@@ -16,8 +16,21 @@ import {
 } from "@mui/material";
 
 const Dashboard: React.FC = () => {
-  const { tokens } = useTokens();
+  const { tokens, isMounted } = useTokens();
   const [activeTab, setActiveTab] = useState<"tokens" | "activity">("tokens");
+
+  // Don't render until client-side hydration is complete
+  if (!isMounted) {
+    return (
+      <section className="w-full py-12 px-4">
+        <div className="max-w-6xl mx-auto">
+          <Typography variant="h4" sx={{ mb: 2, fontWeight: 'bold' }}>
+            Loading...
+          </Typography>
+        </div>
+      </section>
+    );
+  }
 
   const formatAddress = (address: string) => {
     if (address === "pending") return "Pending...";

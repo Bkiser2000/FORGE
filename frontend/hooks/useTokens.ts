@@ -14,26 +14,44 @@ export interface Token {
 
 export const useTokens = () => {
   const [tokens, setTokens] = useState<Token[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Load tokens from localStorage on mount
+  // Load tokens from localStorage on mount (client-side only)
   useEffect(() => {
-    const stored = localStorage.getItem('forgeTokens');
-    if (stored) {
-      try {
-        setTokens(JSON.parse(stored));
-      } catch (e) {
-        console.error('Failed to load tokens from localStorage:', e);
+    setIsMounted(true);
+    try {
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        const stored = localStorage.getItem('forgeTokens');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setTokens(parsed);
+          }
+        }
       }
+    } catch (e) {
+      console.error('Failed to load tokens from localStorage:', e);
     }
   }, []);
 
-  // Save tokens to localStorage whenever they change
+  // Save tokens to localStorage whenever they change (only after mount)
   useEffect(() => {
-    localStorage.setItem('forgeTokens', JSON.stringify(tokens));
-  }, [tokens]);
+    if (isMounted && typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('forgeTokens', JSON.stringify(tokens));
+      } catch (e) {
+        console.error('Failed to save tokens to localStorage:', e);
+      }
+    }
+  }, [tokens, isMounted]);
 
   const addToken = (token: Token) => {
-    setTokens(prev => [token, ...prev]);
+    console.log('Adding token:', token);
+    setTokens(prev => {
+      const updated = [token, ...prev];
+      console.log('Updated tokens:', updated);
+      return updated;
+    });
   };
 
   const removeToken = (id: string) => {
@@ -44,5 +62,6 @@ export const useTokens = () => {
     tokens,
     addToken,
     removeToken,
+    isMounted,
   };
 };
