@@ -40,9 +40,7 @@ jobs:
           export PATH="$HOME/.cargo/bin:$PATH"
           
           # Remove lock file from git tracking if present
-          cd /github/workspace
-          git rm --cached contracts/solana/Cargo.lock 2>/dev/null || true
-          cd contracts/solana
+          git rm --cached Cargo.lock 2>/dev/null || true
           
           # Remove any existing lock file
           rm -f Cargo.lock
