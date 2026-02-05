@@ -221,11 +221,12 @@ export class ForgeClient {
       console.log('System program:', systemProgram.toString());
       console.log('Rent sysvar:', rentSysvar.toString());
       
-      // Create keys array with proper PublicKey instances
+      // Create keys array with cached PublicKey instances
       console.log('Creating instruction with keys...');
       let keys: any[];
       try {
-        const tokenProgramId = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+        // Use the cached token program ID
+        const tokenProgramId = getTokenProgramId();
         console.log('Token program:', tokenProgramId.toString());
         
         keys = [
