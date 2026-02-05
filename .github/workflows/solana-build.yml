@@ -1,0 +1,90 @@
+name: Build & Test Solana Contract
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'contracts/solana/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'contracts/solana/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.0/install)"
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
+          solana --version
+
+      - name: Install Anchor CLI
+        run: npm install -g @coral-xyz/anchor-cli
+
+      - name: Build Solana Contract
+        working-directory: ./contracts/solana
+        run: |
+          if [ -f Cargo.lock ]; then
+            sed -i 's/^version = 4/version = 3/' Cargo.lock
+          fi
+          cargo-build-sbf
+
+      - name: Verify Build Output
+        working-directory: ./contracts/solana
+        run: |
+          ls -lah target/deploy/
+          file target/deploy/forge_solana.so
+
+      - name: Upload Artifacts
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: solana-build-artifacts
+          path: contracts/solana/target/deploy/
+
+  deploy-devnet:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.0/install)"
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          echo "PATH=/home/runner/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Install Anchor CLI
+        run: npm install -g @coral-xyz/anchor-cli
+
+      - name: Set up Devnet Wallet
+        env:
+          SOLANA_KEYPAIR: ${{ secrets.SOLANA_DEVNET_KEYPAIR }}
+        run: |
+          mkdir -p ~/.config/solana
+          echo "$SOLANA_KEYPAIR" > ~/.config/solana/id.json
+          chmod 600 ~/.config/solana/id.json
+          solana config set --url https://api.devnet.solana.com
+          solana config set --keypair ~/.config/solana/id.json
+
+      - name: Check Balance
+        run: solana balance
+
+      - name: Build for Deployment
+        working-directory: ./contracts/solana
+        run: |
+          if [ -f Cargo.lock ]; then
+            sed -i 's/^version = 4/version = 3/' Cargo.lock
+          fi
+          cargo-build-sbf
+
+      - name: Deploy to Devnet
+        working-directory: ./contracts/solana
+        run: |
+          solana program deploy target/deploy/forge_solana.so
