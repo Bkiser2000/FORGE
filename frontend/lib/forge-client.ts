@@ -160,7 +160,9 @@ export class ForgeClient {
       offset += 1;
       
       // InitialSupply (u64 - as little-endian)
-      new BN(params.initialSupply).toBuffer('le', 8).copy(buffer, offset);
+      const supplyBN = new BN(params.initialSupply);
+      const supplyBuffer = supplyBN.toArray('le', 8);
+      Buffer.from(supplyBuffer).copy(buffer, offset);
       offset += 8;
       
       const instructionData = buffer.slice(0, offset);
