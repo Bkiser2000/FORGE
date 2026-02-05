@@ -16,11 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Remove Cargo.lock
+      - name: Remove Cargo.lock Files
         run: |
-          echo "=== Removing Cargo.lock from checked out code ==="
-          find . -name "Cargo.lock" -type f -delete
-          echo "✓ Cargo.lock removed"
+          echo "=== Removing ALL Cargo.lock files ==="
+          find . -name "Cargo.lock" -delete -print
+          echo "=== Verifying removal ==="
+          find . -name "Cargo.lock" && echo "ERROR: Cargo.lock still exists" || echo "✓ All Cargo.lock files removed"
 
       - name: Install Dependencies
         run: |
