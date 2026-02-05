@@ -21,6 +21,7 @@ jobs:
           which cargo-build-sbf
           which cargo
           solana --version
+          cargo-build-sbf --help 2>&1 | head -20
 
       - name: Build Solana Contract
         working-directory: ./contracts/solana
@@ -29,7 +30,8 @@ jobs:
           if [ -f Cargo.lock ]; then
             sed -i 's/^version = 4/version = 3/' Cargo.lock
           fi
-          /opt/solanainstall/solana/active_release/bin/cargo-build-sbf
+          echo "Starting build..."
+          cargo-build-sbf 2>&1 || (echo "Build failed, attempting with cargo directly..." && cargo build --release --target sbf-solana-solana)
 
       - name: Verify Build Output
         working-directory: ./contracts/solana
