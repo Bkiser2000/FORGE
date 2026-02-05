@@ -5,32 +5,40 @@ import { BN } from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
-// Create PublicKey objects at module load time - BEFORE SES sandbox locks down
-// This is the only way to bypass Vercel's SES restrictions on runtime object creation
+// Create PublicKey objects lazily on first access
+// This ensures they're created on client-side, bypassing SSR issues and SES restrictions
 let PROGRAM_ID: PublicKey | null = null;
 let TOKEN_PROGRAM_ID: PublicKey | null = null;
 
-// Initialize at module load
-try {
-  if (typeof window !== 'undefined') {
-    console.log('Initializing PublicKeys at module load time...');
-    PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
-    TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
-    console.log('✓ PublicKeys initialized:', {
-      PROGRAM_ID: PROGRAM_ID.toString(),
-      TOKEN_PROGRAM_ID: TOKEN_PROGRAM_ID.toString(),
-    });
+const initializePublicKeys = () => {
+  console.log('Initializing PublicKeys...');
+  if (!PROGRAM_ID) {
+    try {
+      PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+      console.log('✓ PROGRAM_ID initialized:', PROGRAM_ID.toString());
+    } catch (err) {
+      console.error('Failed to create PROGRAM_ID:', err);
+      throw err;
+    }
   }
-} catch (err) {
-  console.error('Error initializing PublicKeys at module load:', err);
-}
+  if (!TOKEN_PROGRAM_ID) {
+    try {
+      TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+      console.log('✓ TOKEN_PROGRAM_ID initialized:', TOKEN_PROGRAM_ID.toString());
+    } catch (err) {
+      console.error('Failed to create TOKEN_PROGRAM_ID:', err);
+      throw err;
+    }
+  }
+};
 
 const getProgramId = (): PublicKey => {
   if (typeof window === 'undefined') {
     throw new Error("getProgramId() called on server");
   }
+  initializePublicKeys();
   if (!PROGRAM_ID) {
-    throw new Error("PROGRAM_ID not initialized - module load may have failed");
+    throw new Error("PROGRAM_ID failed to initialize");
   }
   return PROGRAM_ID;
 };
@@ -39,8 +47,9 @@ const getTokenProgramId = (): PublicKey => {
   if (typeof window === 'undefined') {
     throw new Error("getTokenProgramId() called on server");
   }
+  initializePublicKeys();
   if (!TOKEN_PROGRAM_ID) {
-    throw new Error("TOKEN_PROGRAM_ID not initialized - module load may have failed");
+    throw new Error("TOKEN_PROGRAM_ID failed to initialize");
   }
   return TOKEN_PROGRAM_ID;
 };
