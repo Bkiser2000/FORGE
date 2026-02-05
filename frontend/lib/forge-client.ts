@@ -66,28 +66,36 @@ export class ForgeClient {
       let idl: any;
       
       try {
+        console.log('Trying to fetch IDL from on-chain...');
         idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
         console.log('IDL fetched from on-chain');
       } catch (e) {
-        console.warn('Failed to fetch IDL from on-chain, trying local cache...');
+        console.warn('Failed to fetch IDL from on-chain, trying local cache...', e);
         try {
-          const response = await fetch('/forge-idl.json');
-          if (!response.ok) throw new Error('Failed to fetch local IDL');
+          console.log('Fetching local IDL from /forge-idl.json...');
+          const response = await fetch('/forge-idl.json', {
+            cache: 'no-cache',
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
           idl = await response.json();
-          console.log('IDL loaded from local cache');
+          console.log('✓ IDL loaded from local cache');
         } catch (fetchErr) {
           console.error('Failed to load IDL from local cache:', fetchErr);
-          throw new Error("IDL not found - Contract may not be deployed");
+          throw new Error(
+            `IDL not found. Local cache error: ${fetchErr instanceof Error ? fetchErr.message : 'Unknown error'}`
+          );
         }
       }
 
       if (!idl) {
-        throw new Error("IDL not found - Contract may not be deployed or IDL not accessible");
+        throw new Error("IDL is null/undefined - Contract may not be properly configured");
       }
 
-      console.log('IDL loaded successfully');
+      console.log('✓ IDL loaded successfully');
       const program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
-      console.log('Program instance created');
+      console.log('✓ Program instance created');
 
       // Generate keypairs for new accounts
       const tokenConfig = anchor.web3.Keypair.generate();
