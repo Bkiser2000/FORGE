@@ -32,7 +32,7 @@ jobs:
 
       - name: Build Solana Contract
         shell: bash
-        working-directory: ./contracts/solana
+        working-directory: ./contracts/solana/programs/forge_solana
         run: |
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
@@ -40,17 +40,17 @@ jobs:
           echo "=== Checking cargo ==="
           which cargo && cargo --version
           
-          # Fix lock file version
-          if [ -f Cargo.lock ]; then
-            sed -i 's/^version = 4/version = 3/' Cargo.lock
-          fi
+          echo "=== Current directory ==="
+          pwd
+          ls -la
           
           echo "=== Starting build with cargo-build-sbf ==="
           cargo-build-sbf
 
       - name: Verify Build Output
-        working-directory: ./contracts/solana
+        working-directory: ./contracts/solana/programs/forge_solana
         run: |
+          echo "=== Checking build output ==="
           ls -lah target/deploy/ || echo "Deploy directory not found"
           if [ -f target/deploy/forge_solana.so ]; then
             echo "✓ Build successful!"
@@ -65,4 +65,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: solana-build-artifacts
-          path: contracts/solana/target/deploy/
+          path: contracts/solana/programs/forge_solana/target/deploy/
