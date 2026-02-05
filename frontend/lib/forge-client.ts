@@ -2,18 +2,8 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { BN } from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
-
-// Compute Anchor instruction discriminator from instruction name using Web Crypto API
-const computeDiscriminator = async (ixName: string): Promise<Buffer> => {
-  const name = `instruction:${ixName}`;
-  const encoder = new TextEncoder();
-  const data = encoder.encode(name);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data as BufferSource);
-  return Buffer.from(hashBuffer).slice(0, 8);
-};
 
 // Use string representations directly - avoid creating multiple PublicKey objects
 const PROGRAM_ID_STRING = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF";
@@ -182,10 +172,10 @@ export class ForgeClient {
 
       console.log('✓ IDL loaded successfully:', (idl as any).name);
       
-      // Use Anchor Program interface - this handles instruction encoding automatically
+      // Create Program instance - Anchor constructor takes (idl, provider) with programId embedded in IDL
       console.log('Creating Anchor Program instance...');
-      const idlWithProgramId = { ...idl, metadata: { address: getProgramId().toString() } };
-      const program = new anchor.Program(idlWithProgramId as any, this.provider);
+      const programIdl = { ...idl, metadata: { address: getProgramId().toString() } };
+      const program = new anchor.Program(programIdl as any, this.provider);
       
       console.log('✓ Program instance created');
       
@@ -244,12 +234,10 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const idlWithProgramId = { ...idl, metadata: { address: getProgramId().toString() } };
-      const program = new anchor.Program(idlWithProgramId as any, this.provider);
+      const programIdl = { ...idl, metadata: { address: getProgramId().toString() } };
+      const program = new anchor.Program(programIdl as any, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
-      // This would need the actual mint and token account addresses
-      // In a real implementation, you'd fetch these from chain
       const tx = await program.methods
         .mintTokens(Math.floor(amount))
         .accounts({
@@ -273,8 +261,8 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const idlWithProgramId = { ...idl, metadata: { address: getProgramId().toString() } };
-      const program = new anchor.Program(idlWithProgramId as any, this.provider);
+      const programIdl = { ...idl, metadata: { address: getProgramId().toString() } };
+      const program = new anchor.Program(programIdl as any, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
