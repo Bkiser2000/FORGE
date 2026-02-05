@@ -133,32 +133,52 @@ export class ForgeClient {
       
       // Pass supply amount directly - Anchor will handle conversion
       const supplyAmount = Math.floor(supplyWithDecimals);
-      console.log('Supply amount:', supplyAmount);
+      console.log('Supply amount:', supplyAmount, 'Type:', typeof supplyAmount);
 
       console.log('Building transaction...');
-      const builder = program.methods
-        .createToken(
-          params.name,
-          params.symbol,
-          params.decimals,
-          supplyAmount
-        )
-        .accounts({
-          payer: this.provider.wallet.publicKey,
-          tokenConfig: tokenConfig.publicKey,
-          mint: mint.publicKey,
-          ownerTokenAccount: ownerTokenAccount.publicKey,
+      let builder;
+      try {
+        builder = program.methods
+          .createToken(
+            params.name,
+            params.symbol,
+            params.decimals,
+            supplyAmount
+          );
+        console.log('✓ Method builder created successfully');
+      } catch (builderErr) {
+        console.error('❌ Error building method:', builderErr);
+        throw new Error(`Failed to build createToken method: ${builderErr instanceof Error ? builderErr.message : String(builderErr)}`);
+      }
+
+      try {
+        builder = builder
+          .accounts({
+            payer: this.provider.wallet.publicKey,
+            tokenConfig: tokenConfig.publicKey,
+            mint: mint.publicKey,
+            ownerTokenAccount: ownerTokenAccount.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId,
           tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
         .signers([tokenConfig, mint, ownerTokenAccount]);
+        console.log('✓ Accounts and signers configured');
+      } catch (accountsErr) {
+        console.error('❌ Error configuring accounts:', accountsErr);
+        throw new Error(`Failed to configure accounts: ${accountsErr instanceof Error ? accountsErr.message : String(accountsErr)}`);
+      }
 
       console.log('Sending transaction...');
-      const tx = await builder.rpc();
-      
-      console.log('=== Transaction Successful ===');
-      console.log('Transaction hash:', tx);
+      let tx;
+      try {
+        tx = await builder.rpc();
+        console.log('=== Transaction Successful ===');
+        console.log('Transaction hash:', tx);
+      } catch (rpcErr) {
+        console.error('❌ RPC Error:', rpcErr);
+        throw new Error(`Transaction failed: ${rpcErr instanceof Error ? rpcErr.message : String(rpcErr)}`);
+      }
       return tx;
     } catch (error) {
       console.error("=== Error Creating Token ===");
