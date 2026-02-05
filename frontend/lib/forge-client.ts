@@ -114,25 +114,24 @@ export class ForgeClient {
       }
 
       console.log('✓ IDL loaded successfully:', idl.name, '- Version:', idl.version);
+      console.log('IDL type:', typeof idl, 'IDL keys:', Object.keys(idl || {}).slice(0, 10));
       console.log('Program ID:', PROGRAM_ID.toString());
-      console.log('Provider:', this.provider ? 'initialized' : 'not initialized');
+      console.log('Provider wallet:', this.provider?.wallet?.publicKey?.toString());
       
       let program;
       try {
-        // Try different constructor signatures
-        console.log('Attempting to create Program instance...');
-        program = new anchor.Program(idl as Idl, PROGRAM_ID, this.provider);
-        console.log('✓ Program instance created');
-      } catch (programErr) {
-        console.error('First attempt failed:', programErr);
-        try {
-          console.log('Trying alternative Program construction...');
-          program = new (anchor.Program as any)(idl, PROGRAM_ID.toString(), this.provider);
-          console.log('✓ Program instance created (alternative)');
-        } catch (altErr) {
-          console.error('Alternative attempt also failed:', altErr);
-          throw new Error(`Failed to create Program instance: ${programErr instanceof Error ? programErr.message : String(programErr)}`);
-        }
+        console.log('Step 1: Checking IDL structure...');
+        console.log('  Has metadata:', !!(idl as any).metadata);
+        console.log('  Has accounts:', !!(idl as any).accounts);
+        console.log('  Has instructions:', Array.isArray((idl as any).instructions) ? (idl as any).instructions.length : 'not array');
+        
+        console.log('Step 2: Creating Program instance...');
+        // Anchor 0.32.1 constructor: new Program(idl, programId, provider)
+        program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
+        console.log('✓ Program instance created successfully');
+      } catch (err1) {
+        console.error('❌ Constructor failed:', err1 instanceof Error ? err1.message : String(err1));
+        throw new Error(`Failed to create Program: ${err1 instanceof Error ? err1.message : String(err1)}`);
       }
 
       // Generate keypairs for new accounts
