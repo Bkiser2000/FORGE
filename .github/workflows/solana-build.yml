@@ -49,7 +49,7 @@ jobs:
 
       - name: Build Solana Contract
         shell: bash
-        working-directory: ./contracts/solana/programs/forge_solana
+        working-directory: ./contracts/solana
         run: |
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
@@ -57,31 +57,31 @@ jobs:
           echo "=== Checking cargo ==="
           which cargo && cargo --version
           
+          echo "=== Checking cargo-build-sbf ==="
+          which cargo-build-sbf || echo "cargo-build-sbf not found"
+          
           echo "=== Current directory ==="
           pwd
           ls -la
           
-          echo "=== Attempting build with cargo build ==="
-          cargo build --release 2>&1 || true
+          echo "=== Starting build with cargo-build-sbf ==="
+          cargo-build-sbf --manifest-path programs/forge_solana/Cargo.toml
           
-          echo "=== If that failed, trying with full output ==="
-          cargo build -vv 2>&1 || true
+          echo "=== Build complete ==="
+          find . -name "forge_solana.so" -o -name "*.so" | head -20
 
       - name: Verify Build Output
-        working-directory: ./contracts/solana/programs/forge_solana
+        working-directory: ./contracts/solana
         run: |
           echo "=== Checking for .so files ==="
-          find . -name "*.so" -type f 2>/dev/null || echo "No .so files found"
+          find . -name "*.so" -type f
           
-          echo "=== Checking target directory structure ==="
-          ls -la target/ 2>/dev/null || echo "No target directory"
-          
-          echo "=== Listing all directories ==="
-          find ./target -type d -name "release" 2>/dev/null
+          echo "=== Listing target structure ==="
+          ls -la target/ || echo "No target directory"
 
       - name: Upload Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: solana-build-artifacts
-          path: contracts/solana/programs/forge_solana/target/**/*.so
+          path: contracts/solana/target/**/*.so
