@@ -127,32 +127,10 @@ export class ForgeClient {
       console.log('  mint:', mint.publicKey.toString());
       console.log('  tokenConfig:', tokenConfig.publicKey.toString());
 
-      // Create the ownerTokenAccount address (PDA or derived address)
-      console.log('Finding program address for ownerTokenAccount...');
-      let ownerTokenAccount: [PublicKey, number];
-      try {
-        const tokenProgramId = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
-        console.log('Token program ID:', tokenProgramId.toString());
-        
-        // Try the sync version first
-        if (anchor.web3.PublicKey.findProgramAddressSync) {
-          ownerTokenAccount = anchor.web3.PublicKey.findProgramAddressSync(
-            [Buffer.from("token-account"), this.provider.wallet.publicKey.toBuffer()],
-            tokenProgramId
-          );
-        } else {
-          // Fall back to async version
-          ownerTokenAccount = await anchor.web3.PublicKey.findProgramAddress(
-            [Buffer.from("token-account"), this.provider.wallet.publicKey.toBuffer()],
-            tokenProgramId
-          );
-        }
-      } catch (pda_err) {
-        console.error('PDA creation error:', pda_err);
-        throw new Error(`Failed to derive program address: ${pda_err instanceof Error ? pda_err.message : String(pda_err)}`);
-      }
-
-      console.log('ownerTokenAccount:', ownerTokenAccount[0].toString());
+      // Create ownerTokenAccount - just generate a keypair for simplicity
+      const ownerTokenAccount = anchor.web3.Keypair.generate();
+      
+      console.log('Generated ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
       
       // Encode the arguments manually to avoid Anchor parsing
       const buffer = Buffer.alloc(1000);
@@ -204,7 +182,7 @@ export class ForgeClient {
           { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
           { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
           { pubkey: mint.publicKey, isSigner: true, isWritable: true },
-          { pubkey: ownerTokenAccount[0], isSigner: true, isWritable: true },
+          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
           { pubkey: systemProgram, isSigner: false, isWritable: false },
           { pubkey: tokenProgram, isSigner: false, isWritable: false },
           { pubkey: rentSysvar, isSigner: false, isWritable: false },
@@ -225,7 +203,7 @@ export class ForgeClient {
       console.log('✓ Transaction built, signing...');
       
       // Sign transaction with keypairs
-      transaction.sign(mint, tokenConfig);
+      transaction.sign(mint, tokenConfig, ownerTokenAccount);
       
       // Sign with wallet
       const signedTx = await this.provider.wallet.signTransaction(transaction);
