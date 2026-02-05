@@ -172,13 +172,16 @@ export class ForgeClient {
 
       console.log('✓ IDL loaded successfully:', (idl as any).name);
       
-      // Create Program instance - Anchor constructor takes (idl, provider) with programId embedded in IDL
+      // Create Program instance using standard Anchor initialization
       console.log('Creating Anchor Program instance...');
-      const programIdl = { ...idl, metadata: { address: getProgramId().toString() } };
-      const program = new anchor.Program(programIdl as any, this.provider);
+      // Program(idl, provider) - programId is in IDL metadata
+      const program = new anchor.Program(
+        idl as anchor.Idl,
+        this.provider
+      );
       
       console.log('✓ Program instance created');
-      
+    
       // Generate keypairs for mint and tokenConfig accounts
       const mint = anchor.web3.Keypair.generate();
       const tokenConfig = anchor.web3.Keypair.generate();
@@ -234,8 +237,10 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const programIdl = { ...idl, metadata: { address: getProgramId().toString() } };
-      const program = new anchor.Program(programIdl as any, this.provider);
+      const program = new anchor.Program(
+        idl as anchor.Idl,
+        this.provider
+      );
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
@@ -261,8 +266,10 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const programIdl = { ...idl, metadata: { address: getProgramId().toString() } };
-      const program = new anchor.Program(programIdl as any, this.provider);
+      const program = new anchor.Program(
+        idl as anchor.Idl,
+        this.provider
+      );
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
