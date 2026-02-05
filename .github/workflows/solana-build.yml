@@ -16,22 +16,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify Solana Tools
+      - name: Verify Solana Tools Installation
         run: |
-          which cargo-build-sbf
-          which cargo
-          solana --version
-          cargo-build-sbf --help 2>&1 | head -20
+          echo "=== Checking Solana Tools ==="
+          echo "PATH: $PATH"
+          echo ""
+          echo "=== Solana Version ==="
+          solana --version || echo "solana command not found"
+          echo ""
+          echo "=== Cargo Version ==="
+          cargo --version || echo "cargo command not found"
+          echo ""
+          echo "=== Checking cargo-build-sbf ==="
+          if command -v cargo-build-sbf &> /dev/null; then
+            echo "✓ cargo-build-sbf found at: $(which cargo-build-sbf)"
+            echo "=== cargo-build-sbf --version ==="
+            cargo-build-sbf --version 2>&1 || echo "Failed to get version"
+          else
+            echo "✗ cargo-build-sbf NOT found in PATH"
+            echo "Searching for it..."
+            find /usr -name "cargo-build-sbf" 2>/dev/null || echo "Not found via find"
+            find /opt -name "cargo-build-sbf" 2>/dev/null || echo "Not found in /opt"
+          fi
+          echo ""
+          echo "=== Environment Variables ==="
+          env | grep -i solana || echo "No SOLANA env vars found"
 
       - name: Build Solana Contract
         working-directory: ./contracts/solana
         run: |
+          echo "=== Starting Solana Build ==="
           # Fix lock file version
           if [ -f Cargo.lock ]; then
+            echo "Fixing Cargo.lock version..."
             sed -i 's/^version = 4/version = 3/' Cargo.lock
           fi
-          echo "Starting build..."
-          cargo-build-sbf 2>&1 || (echo "Build failed, attempting with cargo directly..." && cargo build --release --target sbf-solana-solana)
+          
+          echo "=== Listing available build tools ==="
+          ls -la /usr/bin/*build* 2>/dev/null || echo "No build tools in /usr/bin"
+          ls -la /usr/bin/*cargo* 2>/dev/null || echo "No cargo in /usr/bin"
+          
+          echo "=== Attempting build ==="
+          if command -v cargo-build-sbf &> /dev/null; then
+            cargo-build-sbf --version
+            cargo-build-sbf
+          else
+            echo "cargo-build-sbf not in PATH, trying with full path..."
+            /usr/bin/cargo-build-sbf --version 2>&1 || true
+            /usr/bin/cargo-build-sbf 2>&1 || (echo "Full path failed, trying cargo build..." && cargo build --release --target sbf-solana-solana)
+          fi
 
       - name: Verify Build Output
         working-directory: ./contracts/solana
