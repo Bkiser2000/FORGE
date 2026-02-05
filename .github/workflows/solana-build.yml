@@ -49,7 +49,7 @@ jobs:
           ls -la programs/forge_solana/Cargo.toml || echo "Program Cargo.toml not found"
           
           echo "=== Starting build with cargo-build-sbf ==="
-          cargo-build-sbf
+          cargo-build-sbf -p forge_solana
 
       - name: Verify Build Output
         working-directory: ./contracts/solana
