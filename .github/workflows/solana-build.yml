@@ -42,8 +42,7 @@ jobs:
         shell: bash
         working-directory: ./contracts/solana
         env:
-          CARGO_UNSTABLE_LOCKFILE_V5: "true"
-          RUSTFLAGS: "-Z unstable-options"
+          RUSTUP_TOOLCHAIN: nightly
         run: |
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
