@@ -30,40 +30,41 @@ jobs:
           echo "=== Checking cargo-build-sbf ==="
           if command -v cargo-build-sbf &> /dev/null; then
             echo "✓ cargo-build-sbf found at: $(which cargo-build-sbf)"
-            echo "=== cargo-build-sbf --version ==="
-            cargo-build-sbf --version 2>&1 || echo "Failed to get version"
+            cargo-build-sbf --version || echo "Failed to get version"
           else
             echo "✗ cargo-build-sbf NOT found in PATH"
-            echo "Searching for it..."
-            find /usr -name "cargo-build-sbf" 2>/dev/null || echo "Not found via find"
-            find /opt -name "cargo-build-sbf" 2>/dev/null || echo "Not found in /opt"
           fi
-          echo ""
-          echo "=== Environment Variables ==="
-          env | grep -i solana || echo "No SOLANA env vars found"
 
       - name: Build Solana Contract
         working-directory: ./contracts/solana
         run: |
-          echo "=== Starting Solana Build ==="
+          echo "=== Checking environment ==="
+          which cargo || echo "cargo not in PATH"
+          which rustc || echo "rustc not in PATH"
+          
+          # Try to find and source Rust installation
+          if [ -f ~/.cargo/env ]; then
+            echo "Sourcing ~/.cargo/env"
+            source ~/.cargo/env
+          fi
+          
+          # Check again
+          echo "After sourcing: $(which cargo || echo 'cargo still not found')"
+          
           # Fix lock file version
           if [ -f Cargo.lock ]; then
-            echo "Fixing Cargo.lock version..."
             sed -i 's/^version = 4/version = 3/' Cargo.lock
           fi
           
-          echo "=== Listing available build tools ==="
-          ls -la /usr/bin/*build* 2>/dev/null || echo "No build tools in /usr/bin"
-          ls -la /usr/bin/*cargo* 2>/dev/null || echo "No cargo in /usr/bin"
-          
-          echo "=== Attempting build ==="
-          if command -v cargo-build-sbf &> /dev/null; then
-            cargo-build-sbf --version
-            cargo-build-sbf
+          echo "=== Starting build ==="
+          # Try with full paths if needed
+          if [ -f ~/.cargo/bin/cargo ]; then
+            ~/.cargo/bin/cargo build --release --target sbf-solana-solana
+          elif command -v cargo &> /dev/null; then
+            cargo build --release --target sbf-solana-solana
           else
-            echo "cargo-build-sbf not in PATH, trying with full path..."
-            /usr/bin/cargo-build-sbf --version 2>&1 || true
-            /usr/bin/cargo-build-sbf 2>&1 || (echo "Full path failed, trying cargo build..." && cargo build --release --target sbf-solana-solana)
+            # As last resort, try cargo-build-sbf even though cargo is missing
+            /usr/bin/cargo-build-sbf || echo "Build failed - cargo not available"
           fi
 
       - name: Verify Build Output
