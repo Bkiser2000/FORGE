@@ -128,8 +128,13 @@ export class ForgeClient {
       console.log('  mint:', mint.publicKey.toString());
       console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      const supplyAmount = new BN(params.initialSupply * Math.pow(10, params.decimals));
-      console.log('Supply amount:', supplyAmount.toString());
+      // Convert supply to the correct format for u64
+      const supplyWithDecimals = params.initialSupply * Math.pow(10, params.decimals);
+      console.log('Supply calculation:', { initialSupply: params.initialSupply, decimals: params.decimals, total: supplyWithDecimals });
+      
+      // Create BN from the calculated supply
+      const supplyAmount = new BN(Math.floor(supplyWithDecimals).toString());
+      console.log('Supply amount (BN):', supplyAmount.toString());
 
       console.log('Building transaction...');
       const builder = program.methods
@@ -180,7 +185,7 @@ export class ForgeClient {
       // This would need the actual mint and token account addresses
       // In a real implementation, you'd fetch these from chain
       const tx = await program.methods
-        .mintTokens(new BN(amount))
+        .mintTokens(new BN(Math.floor(amount).toString()))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
@@ -206,7 +211,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .burnTokens(new BN(amount))
+        .burnTokens(new BN(Math.floor(amount).toString()))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
