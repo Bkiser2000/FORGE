@@ -65,8 +65,11 @@ jobs:
           ls -la Cargo.toml || echo "Root Cargo.toml not found"
           ls -la programs/forge_solana/Cargo.toml || echo "Program Cargo.toml not found"
           
+          echo "=== Verify no lock file exists ==="
+          [ ! -f Cargo.lock ] && echo "✓ No lock file" || echo "✗ Lock file exists"
+          
           echo "=== Starting build with cargo-build-sbf ==="
-          cargo-build-sbf -- -p forge_solana
+          cargo-build-sbf -- -p forge_solana --offline || cargo-build-sbf -- -p forge_solana
 
       - name: Verify Build Output
         working-directory: ./contracts/solana
