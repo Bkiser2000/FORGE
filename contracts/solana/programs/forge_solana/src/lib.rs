@@ -1,8 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, MintTo, TokenAccount, Transfer};
-use spl_token::instruction::AuthorityType;
+use anchor_spl::token::{self, Mint, MintTo, TokenAccount};
 
-declare_id!("ForgeYourTokenProgramId11111111");
+declare_id!("ForgeSolanaToken111111111111111111111111111");
 
 #[program]
 pub mod forge_solana {
@@ -25,7 +24,7 @@ pub mod forge_solana {
         token_config.owner = ctx.accounts.payer.key();
         token_config.name = name;
         token_config.symbol = symbol;
-        token_config.decimals;
+        token_config.decimals = decimals;
         token_config.total_supply = initial_supply;
         token_config.created_at = Clock::get()?.unix_timestamp;
 
