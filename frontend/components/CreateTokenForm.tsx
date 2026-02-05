@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import {
   Box,
   Button,
@@ -12,18 +13,8 @@ import {
   Stack,
   Paper,
 } from '@mui/material';
-
-// Only import wallet hook after checking window exists
-let useWallet: any;
-let ForgeClient: any;
-let useTokens: any;
-
-if (typeof window !== 'undefined') {
-  const walletModule = require('@solana/wallet-adapter-react');
-  useWallet = walletModule.useWallet;
-  ForgeClient = require('../lib/forge-client').default;
-  useTokens = require('../hooks/useTokens').useTokens;
-}
+import ForgeClient from '../lib/forge-client';
+import { useTokens } from '../hooks/useTokens';
 
 interface CreateTokenFormProps {
   onSuccess?: (txSignature: string) => void;
@@ -418,6 +409,7 @@ const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
 
 // Wrapper component that only renders on client
 export const CreateTokenForm: React.FC<CreateTokenFormProps> = (props) => {
+  // Only render on client side - prevents hook calls during SSR
   if (typeof window === 'undefined') {
     return null;
   }

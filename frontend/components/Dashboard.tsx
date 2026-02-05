@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTokens } from "../hooks/useTokens";
 import {
   Card,
   CardContent,
@@ -13,13 +14,6 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-
-// Only import hooks after checking window exists
-let useTokens: any;
-
-if (typeof window !== 'undefined') {
-  useTokens = require("../hooks/useTokens").useTokens;
-}
 
 const DashboardContent: React.FC = () => {
   const { tokens, isMounted } = useTokens();
