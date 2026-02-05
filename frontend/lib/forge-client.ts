@@ -3,15 +3,16 @@ import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { BN } from "bn.js";
-import { createHash } from "crypto";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
-// Compute Anchor instruction discriminator from instruction name
-const computeDiscriminator = (ixName: string): Buffer => {
+// Compute Anchor instruction discriminator from instruction name using Web Crypto API
+const computeDiscriminator = async (ixName: string): Promise<Buffer> => {
   const name = `instruction:${ixName}`;
-  const hash = createHash('sha256').update(name).digest();
-  return hash.slice(0, 8);
+  const encoder = new TextEncoder();
+  const data = encoder.encode(name);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data as BufferSource);
+  return Buffer.from(hashBuffer).slice(0, 8);
 };
 
 // Use string representations directly - avoid creating multiple PublicKey objects
@@ -201,8 +202,8 @@ export class ForgeClient {
       const buffer = Buffer.alloc(1000);
       let offset = 0;
       
-      // Discriminator (8 bytes) - computed from "instruction:createToken"
-      const discriminator = computeDiscriminator('createToken');
+      // Discriminator (8 bytes) - computed from "instruction:createToken" using Web Crypto API
+      const discriminator = await computeDiscriminator('createToken');
       console.log('Computed discriminator:', discriminator.toString('hex'));
       discriminator.copy(buffer, offset);
       offset += 8;
