@@ -1,12 +1,8 @@
-import React, { useMemo } from "react";
-import dynamic from "next/dynamic";
-import { Box, Container } from "@mui/material";
+'use client';
 
-// Dynamically import CreateTokenForm to prevent SSR issues with wallet hooks
-const CreateTokenForm = dynamic(
-  () => import("./CreateTokenForm").then(mod => ({ default: mod.CreateTokenForm })),
-  { ssr: false }
-);
+import React from "react";
+import { CreateTokenForm } from "./CreateTokenForm";
+import { Box, Container } from "@mui/material";
 
 const TokenCreator: React.FC = () => {
   return (
