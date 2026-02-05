@@ -5,31 +5,25 @@ import { BN } from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
-// Create PublicKey objects on first ForgeClient instantiation
-// This ensures both are created together in the same execution context
+// Use string representations directly - avoid creating multiple PublicKey objects
+const PROGRAM_ID_STRING = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF";
+const TOKEN_PROGRAM_ID_STRING = "TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ";
+
+// Cache ONLY the program ID (which we need first)
+// TOKEN_PROGRAM_ID will be created on-demand from string using base58 decode
 let PROGRAM_ID: PublicKey | null = null;
-let TOKEN_PROGRAM_ID: PublicKey | null = null;
-let initAttempted = false;
 
 const initializePublicKeysEagerly = () => {
-  if (initAttempted) return;
-  initAttempted = true;
+  if (PROGRAM_ID !== null) return; // Already initialized
   
-  console.log('Initializing PublicKeys eagerly...');
+  console.log('Initializing PROGRAM_ID...');
   try {
-    PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+    PROGRAM_ID = new PublicKey(PROGRAM_ID_STRING);
     console.log('✓ PROGRAM_ID initialized:', PROGRAM_ID.toString());
   } catch (err) {
     console.error('Failed to create PROGRAM_ID:', err);
-    PROGRAM_ID = null;
-  }
-  
-  try {
-    TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
-    console.log('✓ TOKEN_PROGRAM_ID initialized:', TOKEN_PROGRAM_ID.toString());
-  } catch (err) {
-    console.error('Failed to create TOKEN_PROGRAM_ID:', err);
-    TOKEN_PROGRAM_ID = null;
+    // Fail fast - if we can't create the program ID, nothing works
+    throw err;
   }
 };
 
@@ -38,19 +32,26 @@ const getProgramId = (): PublicKey => {
     throw new Error("getProgramId() called on server");
   }
   if (!PROGRAM_ID) {
-    throw new Error("PROGRAM_ID not initialized");
+    throw new Error("PROGRAM_ID not initialized - call initializePublicKeysEagerly first");
   }
   return PROGRAM_ID;
 };
 
-const getTokenProgramId = (): PublicKey => {
+// Token program ID stays as a string - convert to PublicKey only when building instructions
+const getTokenProgramIdString = (): string => {
+  return TOKEN_PROGRAM_ID_STRING;
+};
+
+const getTokenProgramIdAsPublicKey = (): PublicKey => {
   if (typeof window === 'undefined') {
-    throw new Error("getTokenProgramId() called on server");
+    throw new Error("getTokenProgramIdAsPublicKey() called on server");
   }
-  if (!TOKEN_PROGRAM_ID) {
-    throw new Error("TOKEN_PROGRAM_ID not initialized");
+  try {
+    return new PublicKey(TOKEN_PROGRAM_ID_STRING);
+  } catch (err) {
+    console.error('Failed to create TOKEN_PROGRAM_ID PublicKey:', err);
+    throw err;
   }
-  return TOKEN_PROGRAM_ID;
 };
 
 export interface CreateTokenParams {
@@ -238,11 +239,11 @@ export class ForgeClient {
       console.log('System program:', systemProgram.toString());
       console.log('Rent sysvar:', rentSysvar.toString());
       
-      // Create keys array - use pre-initialized PublicKey instances
+      // Create keys array - use pre-initialized PROGRAM_ID and token program ID string
       console.log('Creating instruction with keys...');
       let keys: any[];
       try {
-        // All PublicKeys are pre-created at module load - just use them
+        // All PublicKeys that were already generated
         const walletPubkey = this.provider.wallet.publicKey;
         const tokenConfigPubkey = tokenConfig.publicKey;
         const mintPubkey = mint.publicKey;
@@ -250,9 +251,16 @@ export class ForgeClient {
         
         console.log('Pre-collected existing PublicKeys');
         
-        // Get token program ID - already initialized at module load
-        const tokenProgramIdKey = getTokenProgramId();
-        console.log('✓ Got pre-initialized token program ID:', tokenProgramIdKey.toString());
+        // Create TOKEN_PROGRAM_ID only when we absolutely need it
+        // This is the latest point before using it
+        let tokenProgramIdKey: PublicKey;
+        try {
+          tokenProgramIdKey = getTokenProgramIdAsPublicKey();
+          console.log('✓ Got token program ID:', tokenProgramIdKey.toString());
+        } catch (tpErr) {
+          console.error('Error creating token program ID PublicKey:', tpErr);
+          throw new Error(`Failed to create token program ID: ${tpErr instanceof Error ? tpErr.message : String(tpErr)}`);
+        }
         
         keys = [
           { pubkey: walletPubkey, isSigner: true, isWritable: true },
@@ -276,7 +284,7 @@ export class ForgeClient {
         mint: mint.publicKey.toString(),
         ownerTokenAccount: ownerTokenAccount.publicKey.toString(),
         systemProgram: systemProgram.toString(),
-        tokenProgram: getTokenProgramId().toString(),
+        tokenProgram: getTokenProgramIdString(),
         rentSysvar: rentSysvar.toString(),
       });
       
@@ -351,7 +359,7 @@ export class ForgeClient {
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
-          tokenProgram: getTokenProgramId(),
+          tokenProgram: getTokenProgramIdAsPublicKey(),
         })
         .rpc();
 
@@ -378,7 +386,7 @@ export class ForgeClient {
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
-          tokenProgram: getTokenProgramId(),
+          tokenProgram: getTokenProgramIdAsPublicKey(),
         })
         .rpc();
 
