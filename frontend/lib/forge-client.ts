@@ -5,29 +5,38 @@ import { BN } from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
-// Initialize PublicKeys only when in browser environment
+// Cache PublicKey instances to avoid repeated creation
+let cachedProgramId: PublicKey | null = null;
+let cachedTokenProgramId: PublicKey | null = null;
+
 const getProgramId = (): PublicKey => {
   if (typeof window === 'undefined') {
     throw new Error("getProgramId() called on server");
   }
-  try {
-    return new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
-  } catch (err) {
-    console.error("Invalid PROGRAM_ID:", err);
-    throw err;
+  if (!cachedProgramId) {
+    try {
+      cachedProgramId = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+    } catch (err) {
+      console.error("Failed to create PROGRAM_ID PublicKey:", err);
+      throw err;
+    }
   }
+  return cachedProgramId;
 };
 
 const getTokenProgramId = (): PublicKey => {
   if (typeof window === 'undefined') {
     throw new Error("getTokenProgramId() called on server");
   }
-  try {
-    return new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
-  } catch (err) {
-    console.error("Invalid TOKEN_PROGRAM_ID:", err);
-    throw err;
+  if (!cachedTokenProgramId) {
+    try {
+      cachedTokenProgramId = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+    } catch (err) {
+      console.error("Failed to create TOKEN_PROGRAM_ID PublicKey:", err);
+      throw err;
+    }
   }
+  return cachedTokenProgramId;
 };
 
 export interface CreateTokenParams {
@@ -210,33 +219,44 @@ export class ForgeClient {
       const rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
       
       console.log('System program:', systemProgram.toString());
-      
-      // Get token program ID - use string directly to avoid PublicKey creation issues
-      const tokenProgramIdStr = "TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ";
-      console.log('Token program:', tokenProgramIdStr);
       console.log('Rent sysvar:', rentSysvar.toString());
+      
+      // Create keys array with proper PublicKey instances
       console.log('Creating instruction with keys...');
+      let keys: any[];
+      try {
+        const tokenProgramId = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+        console.log('Token program:', tokenProgramId.toString());
+        
+        keys = [
+          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
+          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
+          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
+          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
+          { pubkey: systemProgram, isSigner: false, isWritable: false },
+          { pubkey: tokenProgramId, isSigner: false, isWritable: false },
+          { pubkey: rentSysvar, isSigner: false, isWritable: false },
+        ];
+        
+        console.log('Keys created successfully');
+      } catch (keyErr) {
+        console.error('Error creating keys array:', keyErr);
+        throw new Error(`Failed to create instruction keys: ${keyErr instanceof Error ? keyErr.message : 'Unknown error'}`);
+      }
+      
       console.log('Keys:', {
         payer: this.provider.wallet.publicKey.toString(),
         tokenConfig: tokenConfig.publicKey.toString(),
         mint: mint.publicKey.toString(),
         ownerTokenAccount: ownerTokenAccount.publicKey.toString(),
         systemProgram: systemProgram.toString(),
-        tokenProgram: tokenProgramIdStr,
+        tokenProgram: "TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ",
         rentSysvar: rentSysvar.toString(),
       });
       
       const instruction = new anchor.web3.TransactionInstruction({
         programId: getProgramId(),
-        keys: [
-          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
-          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
-          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
-          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
-          { pubkey: systemProgram, isSigner: false, isWritable: false },
-          { pubkey: new PublicKey(tokenProgramIdStr), isSigner: false, isWritable: false },
-          { pubkey: rentSysvar, isSigner: false, isWritable: false },
-        ],
+        keys: keys,
         data: instructionData,
       });
       
