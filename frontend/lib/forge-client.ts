@@ -182,124 +182,44 @@ export class ForgeClient {
 
       console.log('✓ IDL loaded successfully:', (idl as any).name);
       
-      // Build transaction manually without using anchor.Program to avoid "_bn" parsing error
-      console.log('Building createToken instruction manually...');
+      // Use Anchor Program interface - this handles instruction encoding automatically
+      console.log('Creating Anchor Program instance...');
+      const idlWithProgramId = { ...idl, metadata: { address: getProgramId().toString() } };
+      const program = new anchor.Program(idlWithProgramId as any, this.provider);
+      
+      console.log('✓ Program instance created');
       
       // Generate keypairs for mint and tokenConfig accounts
       const mint = anchor.web3.Keypair.generate();
       const tokenConfig = anchor.web3.Keypair.generate();
+      const ownerTokenAccount = anchor.web3.Keypair.generate();
       
       console.log('Generated keypairs:');
       console.log('  mint:', mint.publicKey.toString());
       console.log('  tokenConfig:', tokenConfig.publicKey.toString());
-
-      // Create ownerTokenAccount - just generate a keypair for simplicity
-      const ownerTokenAccount = anchor.web3.Keypair.generate();
+      console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
       
-      console.log('Generated ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
+      // Build instruction using Anchor's method builder
+      console.log('Building createToken instruction via Anchor...');
+      const instruction = await program.methods
+        .createToken(
+          params.name,
+          params.symbol,
+          params.decimals,
+          new BN(params.initialSupply)
+        )
+        .accounts({
+          payer: this.provider.wallet.publicKey,
+          tokenConfig: tokenConfig.publicKey,
+          mint: mint.publicKey,
+          ownerTokenAccount: ownerTokenAccount.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: getTokenProgramId(),
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .instruction();
       
-      // Encode the arguments manually to avoid Anchor parsing
-      const buffer = Buffer.alloc(1000);
-      let offset = 0;
-      
-      // Discriminator (8 bytes) - Anchor IDL uses camelCase: "createToken"
-      // Even though Rust function is create_token, the discriminator is based on IDL name
-      const discriminator = await computeDiscriminator('createToken');
-      console.log('Computed discriminator for "createToken":', discriminator.toString('hex'));
-      console.log('Discriminator bytes:', Array.from(discriminator).map(b => '0x' + b.toString(16).padStart(2, '0')).join(', '));
-      discriminator.copy(buffer, offset);
-      offset += 8;
-      
-      // Encode string arguments with length prefix
-      const nameBuffer = Buffer.from(params.name, 'utf8');
-      buffer.writeUInt32LE(nameBuffer.length, offset);
-      offset += 4;
-      nameBuffer.copy(buffer, offset);
-      offset += nameBuffer.length;
-      
-      const symbolBuffer = Buffer.from(params.symbol, 'utf8');
-      buffer.writeUInt32LE(symbolBuffer.length, offset);
-      offset += 4;
-      symbolBuffer.copy(buffer, offset);
-      offset += symbolBuffer.length;
-      
-      // Decimals (u8)
-      buffer.writeUInt8(params.decimals, offset);
-      offset += 1;
-      
-      // InitialSupply (u64 - as little-endian)
-      const supplyBN = new BN(params.initialSupply);
-      const supplyBuffer = supplyBN.toArray('le', 8);
-      Buffer.from(supplyBuffer).copy(buffer, offset);
-      offset += 8;
-      
-      const instructionData = buffer.slice(0, offset);
-      
-      console.log('✓ Instruction data built, length:', instructionData.length);
-      console.log('Building instruction with accounts...');
-      
-      // Use program ID constants
-      const systemProgram = anchor.web3.SystemProgram.programId;
-      const rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
-      
-      console.log('System program:', systemProgram.toString());
-      console.log('Rent sysvar:', rentSysvar.toString());
-      
-      // Create keys array - use pre-initialized PROGRAM_ID and imported TOKEN_PROGRAM_ID
-      console.log('Creating instruction with keys...');
-      let keys: any[];
-      try {
-        // All PublicKeys that were already generated
-        const walletPubkey = this.provider.wallet.publicKey;
-        const tokenConfigPubkey = tokenConfig.publicKey;
-        const mintPubkey = mint.publicKey;
-        const ownerTokenAccountPubkey = ownerTokenAccount.publicKey;
-        
-        console.log('Pre-collected existing PublicKeys');
-        
-        // Get TOKEN_PROGRAM_ID from imported constant (no creation)
-        const tokenProgramIdKey = getTokenProgramId();
-        console.log('✓ Got token program ID:', tokenProgramIdKey.toString());
-        
-        keys = [
-          { pubkey: walletPubkey, isSigner: true, isWritable: true },
-          { pubkey: tokenConfigPubkey, isSigner: true, isWritable: true },
-          { pubkey: mintPubkey, isSigner: true, isWritable: true },
-          { pubkey: ownerTokenAccountPubkey, isSigner: true, isWritable: true },
-          { pubkey: systemProgram, isSigner: false, isWritable: false },
-          { pubkey: tokenProgramIdKey, isSigner: false, isWritable: false },
-          { pubkey: rentSysvar, isSigner: false, isWritable: false },
-        ];
-        
-        console.log('✓ Keys array built successfully');
-      } catch (keyErr) {
-        console.error('Error creating keys array:', keyErr);
-        throw new Error(`Failed to create instruction keys: ${keyErr instanceof Error ? keyErr.message : 'Unknown error'}`);
-      }
-      
-      console.log('Keys:', {
-        payer: this.provider.wallet.publicKey.toString(),
-        tokenConfig: tokenConfig.publicKey.toString(),
-        mint: mint.publicKey.toString(),
-        ownerTokenAccount: ownerTokenAccount.publicKey.toString(),
-        systemProgram: systemProgram.toString(),
-        tokenProgram: getTokenProgramIdString(),
-        rentSysvar: rentSysvar.toString(),
-      });
-      
-      let instruction: anchor.web3.TransactionInstruction;
-      try {
-        const programIdForInstruction = getProgramId();
-        instruction = new anchor.web3.TransactionInstruction({
-          programId: programIdForInstruction,
-          keys: keys,
-          data: instructionData,
-        });
-        console.log('✓ Instruction created successfully');
-      } catch (instrErr) {
-        console.error('Error creating TransactionInstruction:', instrErr);
-        throw new Error(`Failed to create instruction: ${instrErr instanceof Error ? instrErr.message : 'Unknown error'}`);
-      }
+      console.log('✓ Instruction built successfully');
       
       // Build transaction
       const transaction = new anchor.web3.Transaction().add(instruction);
