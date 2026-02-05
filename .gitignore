@@ -26,6 +26,7 @@ dist/
 # Solana
 target/
 .anchor/
+Cargo.lock
 
 # Build artifacts
 *.log
