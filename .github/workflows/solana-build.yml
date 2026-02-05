@@ -39,12 +39,8 @@ jobs:
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
           
-          # Aggressively remove all lock files
-          find . -name "Cargo.lock" -type f -delete
-          find .. -name "Cargo.lock" -type f -delete
-          
-          # Remove from git index
-          git rm --cached Cargo.lock 2>/dev/null || true
+          # Clean all untracked files including lock files
+          git clean -fd
           
           echo "=== Checking cargo ==="
           which cargo && cargo --version
