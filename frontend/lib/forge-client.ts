@@ -202,9 +202,10 @@ export class ForgeClient {
       const buffer = Buffer.alloc(1000);
       let offset = 0;
       
-      // Discriminator (8 bytes) - Anchor uses snake_case instruction names: "create_token"
-      const discriminator = await computeDiscriminator('create_token');
-      console.log('Computed discriminator for "create_token":', discriminator.toString('hex'));
+      // Discriminator (8 bytes) - Anchor IDL uses camelCase: "createToken"
+      // Even though Rust function is create_token, the discriminator is based on IDL name
+      const discriminator = await computeDiscriminator('createToken');
+      console.log('Computed discriminator for "createToken":', discriminator.toString('hex'));
       console.log('Discriminator bytes:', Array.from(discriminator).map(b => '0x' + b.toString(16).padStart(2, '0')).join(', '));
       discriminator.copy(buffer, offset);
       offset += 8;
