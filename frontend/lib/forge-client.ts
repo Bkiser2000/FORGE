@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
-import { PublicKey, Connection } from "@solana/web3.js";
+import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
@@ -118,77 +118,38 @@ export class ForgeClient {
       console.log('Parameters:', params);
       console.log('Payer:', this.provider.wallet.publicKey.toString());
 
-      // Get IDL - prioritize local cache for development
+      // Get IDL to find the correct instruction discriminator
       console.log('Attempting to fetch IDL...');
       let idl: any = null;
       
-      // Try to load local IDL first (more reliable for development)
       try {
         console.log('Fetching local IDL from /forge-idl.json...');
-        const response = await fetch('/forge-idl.json', {
-          cache: 'no-cache',
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        const parsedIdl = await response.json();
-        console.log('Local IDL fetch response:', typeof parsedIdl, Object.keys(parsedIdl || {}).slice(0, 5));
-        
-        if (!parsedIdl) {
-          throw new Error('Local IDL parsed as null/undefined');
-        }
-        if (!parsedIdl.instructions) {
-          throw new Error('Local IDL missing instructions field');
-        }
-        
-        idl = parsedIdl;
-        console.log('✓ IDL loaded from local cache. Instructions:', idl.instructions.length);
+        const response = await fetch('/forge-idl.json', { cache: 'no-cache' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        idl = await response.json();
+        console.log('✓ IDL loaded from local cache');
       } catch (fetchErr) {
-        console.warn('Failed to load IDL from local cache, trying on-chain...', fetchErr);
-        
-        // Fallback to on-chain IDL
+        console.warn('Failed to load local IDL, trying on-chain...');
         try {
-          console.log('Trying to fetch IDL from on-chain...');
           idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
-          if (idl) {
-            console.log('✓ IDL fetched from on-chain');
-          } else {
-            throw new Error('On-chain IDL returned null');
-          }
+          console.log('✓ IDL fetched from on-chain');
         } catch (onChainErr) {
-          console.error('Failed to fetch IDL from on-chain:', onChainErr);
-          throw new Error(
-            `IDL not found in local cache or on-chain. Local error: ${fetchErr instanceof Error ? fetchErr.message : 'Unknown'}, On-chain error: ${onChainErr instanceof Error ? onChainErr.message : 'Unknown'}`
-          );
+          throw new Error('IDL not found in local cache or on-chain');
         }
       }
 
-      if (!idl) {
-        throw new Error("IDL is null/undefined after all attempts - Contract may not be properly configured");
-      }
-      if (!idl.instructions || idl.instructions.length === 0) {
-        throw new Error("IDL has no instructions - Contract IDL may be corrupted");
-      }
+      if (!idl) throw new Error("IDL is null/undefined");
 
-      console.log('✓ IDL loaded successfully:', (idl as any).name);
-      
-      // Create Program instance using standard Anchor initialization
-      console.log('Creating Anchor Program instance...');
-      // Ensure IDL has programId metadata for proper serialization
-      const idlWithMetadata = idl as any;
-      if (!idlWithMetadata.metadata) {
-        idlWithMetadata.metadata = {};
-      }
-      idlWithMetadata.metadata.address = getProgramId().toString();
-      
-      const program = new anchor.Program(
-        idlWithMetadata as anchor.Idl,
-        this.provider
+      // Compute discriminator for createToken instruction
+      const instructionName = 'createToken';
+      const discriminatorHash = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(`instruction:${instructionName}`) as BufferSource
       );
-      
-      console.log('✓ Program instance created');
-    
-      // Generate keypairs for mint and tokenConfig accounts
+      const discriminator = new Uint8Array(discriminatorHash).slice(0, 8);
+      console.log('Discriminator:', Array.from(discriminator).map(b => b.toString(16).padStart(2, '0')).join(''));
+
+      // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
       const tokenConfig = anchor.web3.Keypair.generate();
       const ownerTokenAccount = anchor.web3.Keypair.generate();
@@ -197,32 +158,84 @@ export class ForgeClient {
       console.log('  mint:', mint.publicKey.toString());
       console.log('  tokenConfig:', tokenConfig.publicKey.toString());
       console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
-      
-      // Use Anchor's rpc() method which handles serialization and signing automatically
-      console.log('Sending createToken transaction via Anchor rpc()...');
-      const signature = await program.methods
-        .createToken(
-          params.name,
-          params.symbol,
-          params.decimals,
-          new anchor.BN(params.initialSupply)  // Use anchor.BN for proper compatibility
-        )
-        .accounts({
-          payer: this.provider.wallet.publicKey,
-          tokenConfig: tokenConfig.publicKey,
-          mint: mint.publicKey,
-          ownerTokenAccount: ownerTokenAccount.publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId,
-          tokenProgram: getTokenProgramId(),
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        })
-        .signers([mint, tokenConfig, ownerTokenAccount])
-        .rpc();
-      
+
+      // Manually encode instruction data
+      const data = Buffer.alloc(1000);
+      let offset = 0;
+
+      // Discriminator (8 bytes)
+      data.set(discriminator, offset);
+      offset += 8;
+
+      // Name (String: 4-byte length prefix + UTF-8 string)
+      const nameBytes = Buffer.from(params.name, 'utf-8');
+      data.writeUInt32LE(nameBytes.length, offset);
+      offset += 4;
+      data.set(nameBytes, offset);
+      offset += nameBytes.length;
+
+      // Symbol (String: 4-byte length prefix + UTF-8 string)
+      const symbolBytes = Buffer.from(params.symbol, 'utf-8');
+      data.writeUInt32LE(symbolBytes.length, offset);
+      offset += 4;
+      data.set(symbolBytes, offset);
+      offset += symbolBytes.length;
+
+      // Decimals (u8 - 1 byte)
+      data.writeUInt8(params.decimals, offset);
+      offset += 1;
+
+      // InitialSupply (u64 - 8 bytes, little-endian)
+      const supplyBN = new anchor.BN(params.initialSupply);
+      const supplyBuffer = supplyBN.toBuffer('le', 8);
+      data.set(supplyBuffer, offset);
+      offset += 8;
+
+      // Trim data to actual size
+      const instructionData = data.slice(0, offset);
+      console.log('Encoded instruction data length:', instructionData.length);
+
+      // Build instruction
+      const instruction = new TransactionInstruction({
+        programId: getProgramId(),
+        keys: [
+          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
+          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
+          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
+          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          { pubkey: getTokenProgramId(), isSigner: false, isWritable: false },
+          { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+        ],
+        data: instructionData,
+      });
+
+      console.log('Sending transaction...');
+      // Get recent blockhash with retry
+      let blockhash;
+      let lastError;
+      for (let i = 0; i < 3; i++) {
+        try {
+          const blockHashObj = await this.getConnection().getLatestBlockhash('confirmed');
+          blockhash = blockHashObj.blockhash;
+          console.log('✓ Got blockhash:', blockhash);
+          break;
+        } catch (err) {
+          lastError = err;
+          console.warn(`Attempt ${i + 1}/3 to get blockhash failed:`, err);
+          if (i < 2) await new Promise(r => setTimeout(r, 500));
+        }
+      }
+      if (!blockhash) throw new Error(`Failed to get blockhash after 3 attempts: ${lastError}`);
+
+      // Build transaction
+      const transaction = new Transaction({ recentBlockhash: blockhash, feePayer: this.provider.wallet.publicKey });
+      transaction.add(instruction);
+      transaction.sign(mint, tokenConfig, ownerTokenAccount);
+
+      // Sign and send
+      const signature = await this.provider.sendAndConfirm(transaction, [mint, tokenConfig, ownerTokenAccount]);
       console.log('✓ Transaction sent! Signature:', signature);
-      console.log('Waiting for transaction confirmation...');
-      await this.getConnection().confirmTransaction(signature, 'confirmed');
-      console.log('✓ Transaction confirmed');
       
       return signature;
     } catch (error) {
