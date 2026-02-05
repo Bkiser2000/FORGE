@@ -9,6 +9,7 @@ import HeroSection from "@/components/HeroSection";
 // Dynamic imports to prevent SSR issues with hooks
 const TokenCreator = dynamic(() => import("@/components/TokenCreator"), {
   ssr: false,
+  loading: () => <div style={{ padding: '20px' }}>Loading token creator...</div>,
 });
 
 const Dashboard = dynamic(() => import("@/components/Dashboard"), {
@@ -36,7 +37,11 @@ const Home = () => {
           {currentPage === "home" && (
             <HeroSection onCreateClick={() => setCurrentPage("create")} />
           )}
-          {currentPage === "create" && <TokenCreator />}
+          {currentPage === "create" && (
+            <div>
+              <TokenCreator />
+            </div>
+          )}
           {currentPage === "dashboard" && <Dashboard />}
         </div>
       </main>
