@@ -118,7 +118,7 @@ export class ForgeClient {
       console.log('Parameters:', params);
       console.log('Payer:', this.provider.wallet.publicKey.toString());
 
-      // Get IDL to find the correct instruction discriminator
+      // Get IDL
       console.log('Attempting to fetch IDL...');
       let idl: any = null;
       
@@ -140,22 +140,17 @@ export class ForgeClient {
 
       if (!idl) throw new Error("IDL is null/undefined");
 
-      // Compute discriminator for createToken instruction using Anchor's approach
-      const discriminatorHash = await crypto.subtle.digest(
-        'SHA-256',
-        new TextEncoder().encode('instruction:createToken') as BufferSource
+      // Setup Anchor program
+      const idlWithMetadata = idl as any;
+      if (!idlWithMetadata.metadata) {
+        idlWithMetadata.metadata = {};
+      }
+      idlWithMetadata.metadata.address = getProgramId().toString();
+      
+      const program = new anchor.Program(
+        idlWithMetadata as anchor.Idl,
+        this.provider
       );
-      const discriminator = new Uint8Array(discriminatorHash).slice(0, 8);
-      console.log('Computed discriminator:', Array.from(discriminator).map(b => b.toString(16).padStart(2, '0')).join(' '));
-      console.log('Discriminator as decimal:', Array.from(discriminator));
-
-      // Try alternative discriminator formats just in case
-      const altDiscriminatorHash = await crypto.subtle.digest(
-        'SHA-256',
-        new TextEncoder().encode('global:instruction:createToken') as BufferSource
-      );
-      const altDiscriminator = new Uint8Array(altDiscriminatorHash).slice(0, 8);
-      console.log('Alternative discriminator (global:):', Array.from(altDiscriminator).map(b => b.toString(16).padStart(2, '0')).join(' '));
 
       // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
@@ -167,61 +162,29 @@ export class ForgeClient {
       console.log('  tokenConfig:', tokenConfig.publicKey.toString());
       console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      // Manually encode instruction data
-      const data = Buffer.alloc(1000);
-      let offset = 0;
+      // Build instruction using Anchor's methods builder
+      console.log('Building instruction with Anchor...');
+      const instruction = await program.methods
+        .createToken(
+          params.name,
+          params.symbol,
+          params.decimals,
+          new anchor.BN(params.initialSupply)
+        )
+        .accounts({
+          payer: this.provider.wallet.publicKey,
+          tokenConfig: tokenConfig.publicKey,
+          mint: mint.publicKey,
+          ownerTokenAccount: ownerTokenAccount.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: getTokenProgramId(),
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .instruction();
 
-      // Discriminator (8 bytes)
-      data.set(discriminator, offset);
-      offset += 8;
+      console.log('✓ Instruction built');
+      console.log('Instruction data (hex):', instruction.data.toString('hex'));
 
-      // Name (String: 4-byte length prefix + UTF-8 string)
-      const nameBytes = Buffer.from(params.name, 'utf-8');
-      data.writeUInt32LE(nameBytes.length, offset);
-      offset += 4;
-      data.set(nameBytes, offset);
-      offset += nameBytes.length;
-
-      // Symbol (String: 4-byte length prefix + UTF-8 string)
-      const symbolBytes = Buffer.from(params.symbol, 'utf-8');
-      data.writeUInt32LE(symbolBytes.length, offset);
-      offset += 4;
-      data.set(symbolBytes, offset);
-      offset += symbolBytes.length;
-
-      // Decimals (u8 - 1 byte)
-      data.writeUInt8(params.decimals, offset);
-      offset += 1;
-
-      // InitialSupply (u64 - 8 bytes, little-endian)
-      // Convert number to little-endian u64
-      const supplyNum = BigInt(params.initialSupply);
-      const supplyBuffer = Buffer.alloc(8);
-      supplyBuffer.writeBigUInt64LE(supplyNum, 0);
-      data.set(supplyBuffer, offset);
-      offset += 8;
-
-      // Trim data to actual size
-      const instructionData = data.slice(0, offset);
-      console.log('Encoded instruction data (hex):', instructionData.toString('hex'));
-      console.log('Encoded instruction data length:', instructionData.length);
-
-      // Build instruction
-      const instruction = new TransactionInstruction({
-        programId: getProgramId(),
-        keys: [
-          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
-          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
-          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
-          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-          { pubkey: getTokenProgramId(), isSigner: false, isWritable: false },
-          { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-        ],
-        data: instructionData,
-      });
-
-      console.log('Sending transaction...');
       // Get recent blockhash with retry
       let blockhash;
       let lastError;
