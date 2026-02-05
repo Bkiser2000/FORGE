@@ -1,5 +1,5 @@
 import type { AppProps } from "next/app";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import React from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -31,6 +31,15 @@ const theme = createTheme({
 function App({ Component, pageProps }: AppProps) {
   const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
   const [selectedChain, setSelectedChain] = useState<"solana" | "cronos">("solana");
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <SolanaWalletProvider>
