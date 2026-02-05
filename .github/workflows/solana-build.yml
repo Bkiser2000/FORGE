@@ -51,6 +51,9 @@ jobs:
           ls -la Cargo.toml || echo "Root Cargo.toml not found"
           ls -la programs/forge_solana/Cargo.toml || echo "Program Cargo.toml not found"
           
+          echo "=== Regenerating Cargo.lock with correct format ==="
+          cargo update --workspace || true
+          
           echo "=== Starting build with cargo-build-sbf ==="
           cargo-build-sbf -- -p forge_solana
 
