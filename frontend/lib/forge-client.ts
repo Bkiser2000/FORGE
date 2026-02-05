@@ -61,39 +61,59 @@ export class ForgeClient {
       console.log('Parameters:', params);
       console.log('Payer:', this.provider.wallet.publicKey.toString());
 
-      // Get IDL from Anchor or fallback to local
+      // Get IDL - prioritize local cache for development
       console.log('Attempting to fetch IDL...');
-      let idl: any;
+      let idl: any = null;
       
+      // Try to load local IDL first (more reliable for development)
       try {
-        console.log('Trying to fetch IDL from on-chain...');
-        idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
-        console.log('IDL fetched from on-chain');
-      } catch (e) {
-        console.warn('Failed to fetch IDL from on-chain, trying local cache...', e);
+        console.log('Fetching local IDL from /forge-idl.json...');
+        const response = await fetch('/forge-idl.json', {
+          cache: 'no-cache',
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        const parsedIdl = await response.json();
+        console.log('Local IDL fetch response:', typeof parsedIdl, Object.keys(parsedIdl || {}).slice(0, 5));
+        
+        if (!parsedIdl) {
+          throw new Error('Local IDL parsed as null/undefined');
+        }
+        if (!parsedIdl.instructions) {
+          throw new Error('Local IDL missing instructions field');
+        }
+        
+        idl = parsedIdl;
+        console.log('✓ IDL loaded from local cache. Instructions:', idl.instructions.length);
+      } catch (fetchErr) {
+        console.warn('Failed to load IDL from local cache, trying on-chain...', fetchErr);
+        
+        // Fallback to on-chain IDL
         try {
-          console.log('Fetching local IDL from /forge-idl.json...');
-          const response = await fetch('/forge-idl.json', {
-            cache: 'no-cache',
-          });
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          console.log('Trying to fetch IDL from on-chain...');
+          idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
+          if (idl) {
+            console.log('✓ IDL fetched from on-chain');
+          } else {
+            throw new Error('On-chain IDL returned null');
           }
-          idl = await response.json();
-          console.log('✓ IDL loaded from local cache');
-        } catch (fetchErr) {
-          console.error('Failed to load IDL from local cache:', fetchErr);
+        } catch (onChainErr) {
+          console.error('Failed to fetch IDL from on-chain:', onChainErr);
           throw new Error(
-            `IDL not found. Local cache error: ${fetchErr instanceof Error ? fetchErr.message : 'Unknown error'}`
+            `IDL not found in local cache or on-chain. Local error: ${fetchErr instanceof Error ? fetchErr.message : 'Unknown'}, On-chain error: ${onChainErr instanceof Error ? onChainErr.message : 'Unknown'}`
           );
         }
       }
 
       if (!idl) {
-        throw new Error("IDL is null/undefined - Contract may not be properly configured");
+        throw new Error("IDL is null/undefined after all attempts - Contract may not be properly configured");
+      }
+      if (!idl.instructions || idl.instructions.length === 0) {
+        throw new Error("IDL has no instructions - Contract IDL may be corrupted");
       }
 
-      console.log('✓ IDL loaded successfully');
+      console.log('✓ IDL loaded successfully:', idl.name, '- Version:', idl.version);
       const program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
       console.log('✓ Program instance created');
 
