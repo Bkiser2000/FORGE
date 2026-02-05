@@ -171,13 +171,44 @@ export class ForgeClient {
       console.log('Building instruction with accounts...');
       
       // Create PublicKey constants safely
-      const systemProgram = anchor.web3.SystemProgram.programId;
-      const tokenProgram = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
-      const rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
+      let systemProgram: PublicKey;
+      let tokenProgram: PublicKey;
+      let rentSysvar: PublicKey;
       
-      console.log('System program:', systemProgram.toString());
-      console.log('Token program:', tokenProgram.toString());
-      console.log('Rent sysvar:', rentSysvar.toString());
+      try {
+        systemProgram = anchor.web3.SystemProgram.programId;
+        console.log('✓ System program:', systemProgram.toString());
+      } catch (e) {
+        console.error('Failed to get system program:', e);
+        throw e;
+      }
+      
+      try {
+        tokenProgram = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+        console.log('✓ Token program:', tokenProgram.toString());
+      } catch (e) {
+        console.error('Failed to create token program PublicKey:', e);
+        throw e;
+      }
+      
+      try {
+        rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
+        console.log('✓ Rent sysvar:', rentSysvar.toString());
+      } catch (e) {
+        console.error('Failed to get rent sysvar:', e);
+        throw e;
+      }
+      console.log('Creating instruction with keys...');
+      console.log('Keys:', {
+        payer: this.provider.wallet.publicKey.toString(),
+        tokenConfig: tokenConfig.publicKey.toString(),
+        mint: mint.publicKey.toString(),
+        ownerTokenAccount: ownerTokenAccount.publicKey.toString(),
+        systemProgram: systemProgram.toString(),
+        tokenProgram: tokenProgram.toString(),
+        rentSysvar: rentSysvar.toString(),
+      });
+      
       const instruction = new anchor.web3.TransactionInstruction({
         programId: PROGRAM_ID,
         keys: [
