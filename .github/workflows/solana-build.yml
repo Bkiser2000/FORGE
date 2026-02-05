@@ -65,13 +65,13 @@ jobs:
           cargo build --release --target bpf || cargo build --release
 
       - name: Verify Build Output
-        working-directory: ./contracts/solana
+        working-directory: ./contracts/solana/programs/forge_solana
         run: |
           echo "=== Checking build output ==="
-          ls -lah target/deploy/ || echo "Deploy directory not found"
-          if [ -f target/deploy/forge_solana.so ]; then
+          ls -lah target/bpf-solana-solana/release/ || echo "Deploy directory not found"
+          if [ -f target/bpf-solana-solana/release/forge_solana.so ]; then
             echo "✓ Build successful!"
-            file target/deploy/forge_solana.so
+            file target/bpf-solana-solana/release/forge_solana.so
           else
             echo "✗ Build output not found"
             find . -name "*.so" -type f 2>/dev/null || echo "No .so files found"
@@ -82,4 +82,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: solana-build-artifacts
-          path: contracts/solana/target/deploy/
+          path: contracts/solana/programs/forge_solana/target/bpf-solana-solana/release/forge_solana.so
