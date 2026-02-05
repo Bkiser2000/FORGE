@@ -32,15 +32,19 @@ jobs:
           rustup install nightly
           echo "✓ Rust and nightly installed"
 
+      - name: Clean Workspace
+        shell: bash
+        working-directory: ./contracts/solana
+        run: |
+          # Remove lock file before build
+          rm -f Cargo.lock
+
       - name: Build Solana Contract
         shell: bash
         working-directory: ./contracts/solana
         run: |
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
-          
-          # Clean all untracked files including lock files
-          git clean -fd
           
           echo "=== Checking cargo ==="
           which cargo && cargo --version
