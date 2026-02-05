@@ -30,12 +30,18 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleCreateToken = async () => {
+    console.log('handleCreateToken called');
+    console.log('Connected:', connected);
+    console.log('PublicKey:', publicKey);
+    
     if (!connected || !publicKey) {
+      console.error('Wallet not connected');
       setMessage({ type: 'error', text: 'Please connect your wallet first' });
       return;
     }
 
     if (!name || !symbol) {
+      console.error('Missing required fields');
       setMessage({ type: 'error', text: 'Please fill in all fields' });
       return;
     }
@@ -44,18 +50,36 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
     setMessage(null);
 
     try {
+      console.log('Creating wallet object...');
       const wallet = { 
         publicKey, 
         signTransaction,
         signAllTransactions,
       };
+      console.log('Wallet object created:', { 
+        hasPublicKey: !!wallet.publicKey,
+        hasSignTransaction: !!wallet.signTransaction,
+        hasSignAllTransactions: !!wallet.signAllTransactions,
+      });
+      
+      console.log('Initializing ForgeClient...');
       const client = new ForgeClient(wallet);
+      console.log('ForgeClient initialized');
+      
+      console.log('Calling createToken with params:', {
+        name,
+        symbol,
+        decimals,
+        initialSupply,
+      });
       const txHash = await client.createToken({
         name,
         symbol,
         decimals,
         initialSupply,
       });
+
+      console.log('Token creation successful! txHash:', txHash);
 
       // Store the token in localStorage
       addToken({
@@ -80,10 +104,12 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
       
       if (onSuccess) onSuccess(txHash);
     } catch (error: any) {
-      console.error('Token creation error:', error);
+      console.error('Token creation failed:', error);
+      console.error('Error message:', error?.message);
+      console.error('Error stack:', error?.stack);
       setMessage({
         type: 'error',
-        text: `Error: ${error.message || 'Failed to create token'}`,
+        text: `Error: ${error?.message || 'Failed to create token'}`,
       });
     } finally {
       setLoading(false);

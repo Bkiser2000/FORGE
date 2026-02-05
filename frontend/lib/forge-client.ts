@@ -57,23 +57,58 @@ export class ForgeClient {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      // Get IDL from Anchor
-      const idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
-      if (!idl) throw new Error("IDL not found");
+      console.log('=== Starting Token Creation ===');
+      console.log('Parameters:', params);
+      console.log('Payer:', this.provider.wallet.publicKey.toString());
 
+      // Get IDL from Anchor or fallback to local
+      console.log('Attempting to fetch IDL...');
+      let idl: any;
+      
+      try {
+        idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
+        console.log('IDL fetched from on-chain');
+      } catch (e) {
+        console.warn('Failed to fetch IDL from on-chain, trying local cache...');
+        try {
+          const response = await fetch('/forge-idl.json');
+          if (!response.ok) throw new Error('Failed to fetch local IDL');
+          idl = await response.json();
+          console.log('IDL loaded from local cache');
+        } catch (fetchErr) {
+          console.error('Failed to load IDL from local cache:', fetchErr);
+          throw new Error("IDL not found - Contract may not be deployed");
+        }
+      }
+
+      if (!idl) {
+        throw new Error("IDL not found - Contract may not be deployed or IDL not accessible");
+      }
+
+      console.log('IDL loaded successfully');
       const program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
+      console.log('Program instance created');
 
       // Generate keypairs for new accounts
       const tokenConfig = anchor.web3.Keypair.generate();
       const mint = anchor.web3.Keypair.generate();
       const ownerTokenAccount = anchor.web3.Keypair.generate();
+      
+      console.log('Generated keypairs:');
+      console.log('  tokenConfig:', tokenConfig.publicKey.toString());
+      console.log('  mint:', mint.publicKey.toString());
+      console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      const tx = await program.methods
+      const supplyAmount = new anchor.BN(params.initialSupply * Math.pow(10, params.decimals));
+      console.log('Supply amount:', supplyAmount.toString());
+
+      console.log('Building transaction...');
+      const builder = program.methods
         .createToken(
           params.name,
           params.symbol,
           params.decimals,
-          new anchor.BN(params.initialSupply * Math.pow(10, params.decimals))
+          supplyAmount
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
@@ -84,12 +119,21 @@ export class ForgeClient {
           tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
-        .signers([tokenConfig, mint, ownerTokenAccount])
-        .rpc();
+        .signers([tokenConfig, mint, ownerTokenAccount]);
 
+      console.log('Sending transaction...');
+      const tx = await builder.rpc();
+      
+      console.log('=== Transaction Successful ===');
+      console.log('Transaction hash:', tx);
       return tx;
     } catch (error) {
-      console.error("Error creating token:", error);
+      console.error("=== Error Creating Token ===");
+      console.error('Error:', error);
+      if (error instanceof Error) {
+        console.error('Message:', error.message);
+        console.error('Stack:', error.stack);
+      }
       throw error;
     }
   }
