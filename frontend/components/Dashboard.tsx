@@ -1,167 +1,122 @@
 import React, { useState } from "react";
-
-interface Token {
-  id: string;
-  name: string;
-  symbol: string;
-  totalSupply: string;
-  decimals: number;
-  chain: "solana" | "cronos";
-  createdAt: string;
-  address: string;
-}
+import { useTokens } from "../hooks/useTokens";
+import {
+  Card,
+  CardContent,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Button,
+  Box,
+  Typography,
+} from "@mui/material";
 
 const Dashboard: React.FC = () => {
-  // Mock data
-  const [tokens] = useState<Token[]>([
-    {
-      id: "1",
-      name: "My First Token",
-      symbol: "MFT",
-      totalSupply: "1,000,000",
-      decimals: 18,
-      chain: "cronos",
-      createdAt: "2024-02-01",
-      address: "0x742d35Cc6634C0532925a3b844Bc9e7595f1e1e4",
-    },
-    {
-      id: "2",
-      name: "Community Token",
-      symbol: "COMM",
-      totalSupply: "5,000,000",
-      decimals: 9,
-      chain: "solana",
-      createdAt: "2024-01-28",
-      address: "TokenkegQfeZyiNwAJsyFbPVwwQnmZNoKTqprstbVqYi",
-    },
-  ]);
-
+  const { tokens } = useTokens();
   const [activeTab, setActiveTab] = useState<"tokens" | "activity">("tokens");
 
   const formatAddress = (address: string) => {
+    if (address === "pending") return "Pending...";
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString();
   };
 
   return (
     <section className="w-full py-12 px-4">
-      <div className="max-w-6xl mx-auto fade-in">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h2 className="text-4xl font-bold gradient-text mb-2">Your Tokens</h2>
-          <p className="text-gray-400">
-            Manage and monitor all your created tokens across networks
-          </p>
-        </div>
+        <Typography variant="h4" sx={{ mb: 2, fontWeight: 'bold', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', backgroundClip: 'text', WebkitBackgroundClip: 'text', color: 'transparent' }}>
+          Your Tokens
+        </Typography>
+        <Typography variant="body2" sx={{ mb: 4, color: 'rgba(255,255,255,0.7)' }}>
+          Manage and monitor all your created tokens on Solana devnet
+        </Typography>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
-          <div className="card">
-            <p className="text-gray-400 text-sm">Total Tokens</p>
-            <p className="text-3xl font-bold gradient-text mt-2">2</p>
-          </div>
-          <div className="card">
-            <p className="text-gray-400 text-sm">Solana Tokens</p>
-            <p className="text-3xl font-bold text-purple-400 mt-2">1</p>
-          </div>
-          <div className="card">
-            <p className="text-gray-400 text-sm">Cronos Tokens</p>
-            <p className="text-3xl font-bold text-blue-400 mt-2">1</p>
-          </div>
-          <div className="card">
-            <p className="text-gray-400 text-sm">Total Value Minted</p>
-            <p className="text-2xl font-bold text-green-400 mt-2">6M</p>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex space-x-4 mb-8 border-b border-gray-700">
-          <button
-            onClick={() => setActiveTab("tokens")}
-            className={`pb-4 px-4 font-medium transition ${
-              activeTab === "tokens"
-                ? "text-blue-400 border-b-2 border-blue-400"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            My Tokens
-          </button>
-          <button
-            onClick={() => setActiveTab("activity")}
-            className={`pb-4 px-4 font-medium transition ${
-              activeTab === "activity"
-                ? "text-blue-400 border-b-2 border-blue-400"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            Recent Activity
-          </button>
-        </div>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2, mb: 4 }}>
+          <Card sx={{ background: 'rgba(102, 126, 234, 0.1)', border: '1px solid rgba(102, 126, 234, 0.3)' }}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>Total Tokens</Typography>
+              <Typography variant="h5" sx={{ color: '#667eea' }}>{tokens.length}</Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ background: 'rgba(167, 139, 250, 0.1)', border: '1px solid rgba(167, 139, 250, 0.3)' }}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>Total Supply</Typography>
+              <Typography variant="h5" sx={{ color: '#a78bfa' }}>{tokens.reduce((sum, t) => sum + t.totalSupply, 0).toLocaleString()}</Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>Network</Typography>
+              <Typography variant="h5" sx={{ color: '#3b82f6' }}>Solana Devnet</Typography>
+            </CardContent>
+          </Card>
+          <Card sx={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>Status</Typography>
+              <Typography variant="h5" sx={{ color: '#10b981' }}>Active</Typography>
+            </CardContent>
+          </Card>
+        </Box>
 
         {/* Tokens Table */}
-        {activeTab === "tokens" && (
-          <div className="space-y-4">
-            {tokens.length > 0 ? (
-              tokens.map((token) => (
-                <div key={token.id} className="card hover:border-blue-400 transition">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-center">
-                    <div>
-                      <p className="font-semibold text-lg">{token.name}</p>
-                      <p className="text-gray-400 text-sm">{token.symbol}</p>
-                    </div>
-
-                    <div className="hidden sm:block">
-                      <p className="text-gray-400 text-sm">Supply</p>
-                      <p className="font-medium">{token.totalSupply}</p>
-                    </div>
-
-                    <div className="hidden lg:block">
-                      <p className="text-gray-400 text-sm">Decimals</p>
-                      <p className="font-medium">{token.decimals}</p>
-                    </div>
-
-                    <div className="hidden lg:block">
-                      <p className="text-gray-400 text-sm">Network</p>
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-                          token.chain === "solana"
-                            ? "bg-purple-900 bg-opacity-50 text-purple-300"
-                            : "bg-blue-900 bg-opacity-50 text-blue-300"
-                        }`}
+        {tokens.length > 0 ? (
+          <TableContainer component={Paper} sx={{ background: 'rgba(26, 31, 46, 0.8)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ background: 'rgba(102, 126, 234, 0.1)' }}>
+                  <TableCell sx={{ color: '#667eea', fontWeight: 'bold' }}>Token Name</TableCell>
+                  <TableCell sx={{ color: '#667eea', fontWeight: 'bold' }}>Symbol</TableCell>
+                  <TableCell sx={{ color: '#667eea', fontWeight: 'bold' }}>Supply</TableCell>
+                  <TableCell sx={{ color: '#667eea', fontWeight: 'bold' }}>Decimals</TableCell>
+                  <TableCell sx={{ color: '#667eea', fontWeight: 'bold' }}>Created</TableCell>
+                  <TableCell sx={{ color: '#667eea', fontWeight: 'bold' }}>Transaction</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {tokens.map((token) => (
+                  <TableRow key={token.id} sx={{ '&:hover': { background: 'rgba(102, 126, 234, 0.05)' } }}>
+                    <TableCell sx={{ color: 'white' }}>{token.name}</TableCell>
+                    <TableCell sx={{ color: '#667eea', fontWeight: 'bold' }}>{token.symbol}</TableCell>
+                    <TableCell sx={{ color: 'rgba(255,255,255,0.8)' }}>{token.totalSupply.toLocaleString()}</TableCell>
+                    <TableCell sx={{ color: 'rgba(255,255,255,0.8)' }}>{token.decimals}</TableCell>
+                    <TableCell sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.875rem' }}>{formatDate(token.createdAt)}</TableCell>
+                    <TableCell>
+                      <Button
+                        size="small"
+                        href={`https://explorer.solana.com/tx/${token.transactionHash}?cluster=devnet`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ color: '#3b82f6', textTransform: 'none' }}
                       >
-                        {token.chain === "solana" ? "Solana" : "Cronos"}
-                      </span>
-                    </div>
-
-                    <div className="text-right">
-                      <button className="btn-secondary text-sm px-4 py-2">
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-gray-700 flex items-center justify-between">
-                    <p className="text-xs text-gray-500">
-                      Created: {token.createdAt}
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      <code className="text-xs bg-gray-900 px-2 py-1 rounded">
-                        {formatAddress(token.address)}
-                      </code>
-                      <button className="text-gray-400 hover:text-white transition">
-                        📋
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="card text-center py-12">
-                <p className="text-gray-400 text-lg">No tokens created yet</p>
-                <p className="text-gray-500 text-sm mt-2">
-                  Create your first token to get started
-                </p>
-              </div>
-            )}
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          <Card sx={{ background: 'rgba(26, 31, 46, 0.8)', border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center', py: 6 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.7)', mb: 1 }}>
+                No tokens created yet
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+                Create your first token to get started
+              </Typography>
+            </CardContent>
+          </Card>
+        )}
           </div>
         )}
 

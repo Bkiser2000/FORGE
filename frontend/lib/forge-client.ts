@@ -31,11 +31,23 @@ export class ForgeClient {
     this.connection = new Connection(DEVNET_RPC, "confirmed");
     this.wallet = wallet;
     
-    if (wallet) {
+    if (wallet && wallet.publicKey) {
+      // Create a wallet adapter compatible object for Anchor
+      const walletAdapter = {
+        publicKey: wallet.publicKey,
+        signAllTransactions: wallet.signAllTransactions || async (txs: any[]) => {
+          if (wallet.signTransaction) {
+            return Promise.all(txs.map(tx => wallet.signTransaction(tx)));
+          }
+          return txs;
+        },
+        signTransaction: wallet.signTransaction || async (tx: any) => tx,
+      };
+
       this.provider = new AnchorProvider(
         this.connection,
-        wallet,
-        { commitment: "confirmed" }
+        walletAdapter as any,
+        { commitment: "confirmed", preflightCommitment: "confirmed" }
       );
       anchor.setProvider(this.provider);
     }

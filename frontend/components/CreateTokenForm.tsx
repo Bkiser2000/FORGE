@@ -11,6 +11,7 @@ import {
   Alert,
 } from '@mui/material';
 import { ForgeClient } from '../lib/forge-client';
+import { useTokens } from '../hooks/useTokens';
 
 interface CreateTokenFormProps {
   onSuccess?: (txSignature: string) => void;
@@ -19,7 +20,8 @@ interface CreateTokenFormProps {
 export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
   onSuccess,
 }) => {
-  const { connected, publicKey, signTransaction } = useWallet();
+  const { connected, publicKey, signAllTransactions, signTransaction } = useWallet();
+  const { addToken } = useTokens();
   const [name, setName] = useState('');
   const [symbol, setSymbol] = useState('');
   const [decimals, setDecimals] = useState(9);
@@ -42,25 +44,43 @@ export const CreateTokenForm: React.FC<CreateTokenFormProps> = ({
     setMessage(null);
 
     try {
-      const wallet = { publicKey, signTransaction };
+      const wallet = { 
+        publicKey, 
+        signTransaction,
+        signAllTransactions,
+      };
       const client = new ForgeClient(wallet);
-      const tx = await client.createToken({
+      const txHash = await client.createToken({
         name,
         symbol,
         decimals,
         initialSupply,
       });
 
+      // Store the token in localStorage
+      addToken({
+        id: txHash,
+        name,
+        symbol,
+        decimals,
+        totalSupply: initialSupply,
+        mint: 'pending',
+        owner: publicKey.toString(),
+        createdAt: Date.now(),
+        transactionHash: txHash,
+      });
+
       setMessage({
         type: 'success',
-        text: `Token created! Tx: ${tx.slice(0, 8)}...`,
+        text: `Token created! Tx: ${txHash.slice(0, 8)}...\nView it on devnet: https://explorer.solana.com/tx/${txHash}?cluster=devnet`,
       });
       setName('');
       setSymbol('');
       setInitialSupply(1000);
       
-      if (onSuccess) onSuccess(tx);
+      if (onSuccess) onSuccess(txHash);
     } catch (error: any) {
+      console.error('Token creation error:', error);
       setMessage({
         type: 'error',
         text: `Error: ${error.message || 'Failed to create token'}`,
