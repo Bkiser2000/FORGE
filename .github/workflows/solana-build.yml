@@ -43,6 +43,7 @@ jobs:
         working-directory: ./contracts/solana
         env:
           RUSTUP_TOOLCHAIN: nightly
+          RUSTFLAGS: "-Z next-lockfile-bump"
         run: |
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
