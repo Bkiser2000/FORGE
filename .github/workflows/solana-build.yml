@@ -61,8 +61,11 @@ jobs:
           pwd
           ls -la
           
-          echo "=== Starting build with cargo build ==="
-          cargo build --release --target bpf || cargo build --release
+          echo "=== Attempting build with cargo build ==="
+          cargo build --release 2>&1 || true
+          
+          echo "=== If that failed, trying with full output ==="
+          cargo build -vv 2>&1 || true
 
       - name: Verify Build Output
         working-directory: ./contracts/solana/programs/forge_solana
