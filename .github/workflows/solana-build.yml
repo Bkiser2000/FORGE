@@ -66,13 +66,16 @@ jobs:
       - name: Verify Build Output
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
-          echo "=== Checking for compiled artifacts ==="
-          find target -name "*.so" -o -name "*.rlib" | head -20
-          ls -la target/release/ 2>/dev/null || echo "Release directory not found"
+          echo "=== Searching for all compiled artifacts ==="
+          find . -type f \( -name "*.so" -o -name "*.a" -o -name "*.rlib" -o -name "forge_solana*" \) 2>/dev/null | head -30
+          
+          echo "=== Listing entire target directory ==="
+          find target -type f 2>/dev/null | head -30 || echo "No target directory found"
 
       - name: Upload Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: solana-build-artifacts
-          path: contracts/solana/programs/forge_solana/target/release/
+          path: contracts/solana/programs/forge_solana/target/
+          if-no-files-found: warn
