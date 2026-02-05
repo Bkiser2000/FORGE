@@ -16,6 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Remove Cargo.lock
+        run: |
+          echo "=== Removing Cargo.lock from checked out code ==="
+          find . -name "Cargo.lock" -type f -delete
+          echo "✓ Cargo.lock removed"
+
       - name: Install Dependencies
         run: |
           echo "=== Installing dependencies ==="
@@ -31,13 +37,6 @@ jobs:
           export PATH="$HOME/.cargo/bin:$PATH"
           rustup install nightly
           echo "✓ Rust and nightly installed"
-
-      - name: Clean Workspace
-        shell: bash
-        working-directory: ./contracts/solana
-        run: |
-          # Remove lock file before build
-          rm -f Cargo.lock
 
       - name: Build Solana Contract
         shell: bash
