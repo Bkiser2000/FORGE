@@ -67,19 +67,18 @@ jobs:
       - name: Verify Build Output
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
-          echo "=== Checking build output ==="
-          ls -lah target/bpf-solana-solana/release/ || echo "Deploy directory not found"
-          if [ -f target/bpf-solana-solana/release/forge_solana.so ]; then
-            echo "✓ Build successful!"
-            file target/bpf-solana-solana/release/forge_solana.so
-          else
-            echo "✗ Build output not found"
-            find . -name "*.so" -type f 2>/dev/null || echo "No .so files found"
-          fi
+          echo "=== Checking for .so files ==="
+          find . -name "*.so" -type f 2>/dev/null || echo "No .so files found"
+          
+          echo "=== Checking target directory structure ==="
+          ls -la target/ 2>/dev/null || echo "No target directory"
+          
+          echo "=== Listing all directories ==="
+          find ./target -type d -name "release" 2>/dev/null
 
       - name: Upload Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: solana-build-artifacts
-          path: contracts/solana/programs/forge_solana/target/bpf-solana-solana/release/forge_solana.so
+          path: contracts/solana/programs/forge_solana/target/**/*.so
