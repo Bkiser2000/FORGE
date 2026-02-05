@@ -38,12 +38,22 @@ jobs:
           rustup install nightly
           echo "✓ Rust and nightly installed"
 
+      - name: Prepare Lock File
+        shell: bash
+        working-directory: ./contracts/solana
+        env:
+          RUSTUP_TOOLCHAIN: stable
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          echo "=== Creating lock file with stable ==="
+          cargo generate-lockfile || true
+          ls -la Cargo.lock || echo "Lock file not created"
+
       - name: Build Solana Contract
         shell: bash
         working-directory: ./contracts/solana
         env:
-          RUSTUP_TOOLCHAIN: nightly
-          RUSTC_BOOTSTRAP: 1
+          RUSTUP_TOOLCHAIN: stable
         run: |
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
