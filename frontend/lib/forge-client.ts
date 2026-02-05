@@ -5,30 +5,31 @@ import { BN } from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
-// Create PublicKey objects lazily on first access
-// This ensures they're created on client-side, bypassing SSR issues and SES restrictions
+// Create PublicKey objects on first ForgeClient instantiation
+// This ensures both are created together in the same execution context
 let PROGRAM_ID: PublicKey | null = null;
 let TOKEN_PROGRAM_ID: PublicKey | null = null;
+let initAttempted = false;
 
-const initializePublicKeys = () => {
-  console.log('Initializing PublicKeys...');
-  if (!PROGRAM_ID) {
-    try {
-      PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
-      console.log('✓ PROGRAM_ID initialized:', PROGRAM_ID.toString());
-    } catch (err) {
-      console.error('Failed to create PROGRAM_ID:', err);
-      throw err;
-    }
+const initializePublicKeysEagerly = () => {
+  if (initAttempted) return;
+  initAttempted = true;
+  
+  console.log('Initializing PublicKeys eagerly...');
+  try {
+    PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+    console.log('✓ PROGRAM_ID initialized:', PROGRAM_ID.toString());
+  } catch (err) {
+    console.error('Failed to create PROGRAM_ID:', err);
+    PROGRAM_ID = null;
   }
-  if (!TOKEN_PROGRAM_ID) {
-    try {
-      TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
-      console.log('✓ TOKEN_PROGRAM_ID initialized:', TOKEN_PROGRAM_ID.toString());
-    } catch (err) {
-      console.error('Failed to create TOKEN_PROGRAM_ID:', err);
-      throw err;
-    }
+  
+  try {
+    TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+    console.log('✓ TOKEN_PROGRAM_ID initialized:', TOKEN_PROGRAM_ID.toString());
+  } catch (err) {
+    console.error('Failed to create TOKEN_PROGRAM_ID:', err);
+    TOKEN_PROGRAM_ID = null;
   }
 };
 
@@ -36,9 +37,8 @@ const getProgramId = (): PublicKey => {
   if (typeof window === 'undefined') {
     throw new Error("getProgramId() called on server");
   }
-  initializePublicKeys();
   if (!PROGRAM_ID) {
-    throw new Error("PROGRAM_ID failed to initialize");
+    throw new Error("PROGRAM_ID not initialized");
   }
   return PROGRAM_ID;
 };
@@ -47,9 +47,8 @@ const getTokenProgramId = (): PublicKey => {
   if (typeof window === 'undefined') {
     throw new Error("getTokenProgramId() called on server");
   }
-  initializePublicKeys();
   if (!TOKEN_PROGRAM_ID) {
-    throw new Error("TOKEN_PROGRAM_ID failed to initialize");
+    throw new Error("TOKEN_PROGRAM_ID not initialized");
   }
   return TOKEN_PROGRAM_ID;
 };
@@ -77,6 +76,9 @@ export class ForgeClient {
   private provider: AnchorProvider | null = null;
 
   constructor(wallet: any) {
+    // Initialize PublicKeys eagerly on first ForgeClient instantiation
+    initializePublicKeysEagerly();
+    
     this.wallet = wallet;
     
     if (wallet && wallet.publicKey) {
