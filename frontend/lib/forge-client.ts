@@ -186,8 +186,10 @@ export class ForgeClient {
       offset += 1;
 
       // InitialSupply (u64 - 8 bytes, little-endian)
-      const supplyBN = new anchor.BN(params.initialSupply);
-      const supplyBuffer = supplyBN.toBuffer('le', 8);
+      // Convert number to little-endian u64
+      const supplyNum = BigInt(params.initialSupply);
+      const supplyBuffer = Buffer.alloc(8);
+      supplyBuffer.writeBigUInt64LE(supplyNum, 0);
       data.set(supplyBuffer, offset);
       offset += 8;
 
