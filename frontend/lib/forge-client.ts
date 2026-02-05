@@ -49,7 +49,7 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const program = new anchor.Program(idl, PROGRAM_ID, this.provider);
+      const program = new anchor.Program(idl as any, PROGRAM_ID, this.provider);
 
       // Generate keypairs for new accounts
       const tokenConfig = anchor.web3.Keypair.generate();
@@ -89,7 +89,7 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const program = new anchor.Program(idl, PROGRAM_ID, this.provider);
+      const program = new anchor.Program(idl as any, PROGRAM_ID, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       // This would need the actual mint and token account addresses
@@ -117,7 +117,7 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const program = new anchor.Program(idl, PROGRAM_ID, this.provider);
+      const program = new anchor.Program(idl as any, PROGRAM_ID, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
