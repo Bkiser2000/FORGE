@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import "@solana/wallet-adapter-react-ui/styles.css";
 import { AppBar, Toolbar, Typography, Button, Box, Select, MenuItem } from "@mui/material";
 import { WalletContext } from "@/pages/_app";
 import Image from "next/image";
@@ -123,12 +124,24 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
           </Select>
 
           {/* Wallet Button */}
-          <WalletMultiButton style={{
-            backgroundColor: connected ? "#10b981" : "#2563eb",
-            fontWeight: "bold",
-            padding: "8px 16px",
-            borderRadius: "8px",
-          }} />
+          <Box sx={{
+            '& button': {
+              backgroundColor: connected ? '#10b981 !important' : '#2563eb !important',
+              color: 'white !important',
+              fontWeight: 'bold !important',
+              padding: '8px 16px !important',
+              borderRadius: '8px !important',
+              border: 'none !important',
+              cursor: 'pointer !important',
+              fontSize: '14px !important',
+              transition: 'all 0.3s ease !important',
+              '&:hover': {
+                opacity: '0.9 !important',
+              },
+            },
+          }}>
+            <WalletMultiButton />
+          </Box>
         </Box>
       </Toolbar>
     </AppBar>
