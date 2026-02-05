@@ -16,13 +16,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Dependencies
+        run: |
+          echo "=== Installing dependencies ==="
+          apt-get update
+          apt-get install -y curl build-essential pkg-config
+          echo "✓ Dependencies installed"
+
       - name: Install Rust
         run: |
           echo "=== Installing Rust ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --no-modify-path
           source $HOME/.cargo/env
           rustc --version
           cargo --version
+          echo "✓ Rust installed"
 
       - name: Build Solana Contract
         working-directory: ./contracts/solana
