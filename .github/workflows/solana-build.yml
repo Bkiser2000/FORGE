@@ -39,11 +39,12 @@ jobs:
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
           
-          # Remove lock file from git tracking if present
-          git rm --cached Cargo.lock 2>/dev/null || true
+          # Aggressively remove all lock files
+          find . -name "Cargo.lock" -type f -delete
+          find .. -name "Cargo.lock" -type f -delete
           
-          # Remove any existing lock file
-          rm -f Cargo.lock
+          # Remove from git index
+          git rm --cached Cargo.lock 2>/dev/null || true
           
           echo "=== Checking cargo ==="
           which cargo && cargo --version
