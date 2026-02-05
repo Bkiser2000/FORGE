@@ -35,38 +35,50 @@ jobs:
           echo "=== Checking installed tools ==="
           which rustc && rustc --version || echo "rustc not found"
           which cargo && cargo --version || echo "cargo not found"
-          which cargo-build-sbf && cargo-build-sbf --version || echo "cargo-build-sbf not found"
           which solana && solana --version || echo "solana not found"
-          echo "=== Checking PATH ==="
-          echo $PATH
           echo "=== Environment ready ==="
 
       - name: Build Solana Contract
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
+          echo "=== Current directory ==="
+          pwd
           echo "=== Starting Solana contract build ==="
-          cargo-build-sbf 2>&1
+          cargo build --release 2>&1
           BUILD_STATUS=$?
           echo "=== Build exit code: $BUILD_STATUS ==="
+          
+          echo "=== What's in current directory after build ==="
+          ls -la
+          
+          echo "=== Check if target exists ==="
+          [ -d target ] && echo "target directory exists" || echo "target directory DOES NOT exist"
+          
           exit $BUILD_STATUS
 
       - name: Verify Build Output
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
-          echo "=== Directory structure ==="
+          echo "=== Current working directory ==="
           pwd
-          ls -la target/sbf-solana-solana/release/ 2>/dev/null || echo "target/sbf-solana-solana/release does not exist"
           
-          echo "=== All .so files ==="
-          find . -type f -name "*.so" 2>/dev/null
-          
-          echo "=== Full deploy directory ==="
-          ls -la target/deploy/ 2>/dev/null || echo "target/deploy does not exist"
+          echo "=== Listing target directory contents ==="
+          if [ -d target ]; then
+            echo "target exists, contents:"
+            ls -la target/
+            echo ""
+            echo "=== Full tree of target directory ==="
+            find target -type f | head -50
+          else
+            echo "ERROR: target directory does not exist!"
+            echo "=== Contents of current directory ==="
+            ls -la
+          fi
 
       - name: Upload Artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: solana-build-artifacts
-          path: contracts/solana/programs/forge_solana/target/deploy/
+          path: contracts/solana/programs/forge_solana/target/release/
           if-no-files-found: warn
