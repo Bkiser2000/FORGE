@@ -2,6 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { BN } from "bn.js";
+import { createHash } from "crypto";
 
 const PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
 const DEVNET_RPC = "https://api.devnet.solana.com";
@@ -140,7 +141,10 @@ export class ForgeClient {
       let offset = 0;
       
       // Discriminator (8 bytes for createToken instruction)
-      const discriminator = anchor.utils.sha256([Buffer.from("global"), Buffer.from("createToken")]).slice(0, 8);
+      const discriminator = createHash('sha256')
+        .update(Buffer.concat([Buffer.from("global"), Buffer.from("createToken")]))
+        .digest()
+        .slice(0, 8);
       discriminator.copy(buffer, offset);
       offset += 8;
       
