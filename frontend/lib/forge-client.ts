@@ -117,22 +117,54 @@ export class ForgeClient {
       
       // The Anchor Program constructor is failing due to IDL structure issues
       // Let's try to diagnose and fix the IDL
-      console.log('Diagnosing IDL structure for Anchor compatibility...');
-      console.log('IDL keys:', Object.keys(idl || {}).sort());
-      console.log('IDL stringified length:', JSON.stringify(idl).length);
+      console.log('IDL Keys:', Object.keys(idl || {}).sort());
+      console.log('Instructions:', idl.instructions.map((i: any) => i.name));
+      console.log('Accounts:', idl.accounts?.map((a: any) => a.name) || []);
       
-      // For Solana Playground deployed contracts, we may need to fetch the IDL differently
-      // Let's try using the basic Anchor setup without the Program class
-      console.log('⚠️  Using simplified token creation flow...');
-      console.log('Note: Full Anchor Program support requires a properly formatted on-chain IDL');
+      // Create the Program instance with the corrected IDL
+      console.log('Creating Program instance...');
+      const program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
+      console.log('✓ Program instance created successfully');
+
+      // Generate keypairs for mint and tokenConfig accounts
+      const mint = anchor.web3.Keypair.generate();
+      const tokenConfig = anchor.web3.Keypair.generate();
       
-      // For now, throw a helpful error message
-      throw new Error(
-        `Anchor Program initialization failed. This typically happens when the IDL from Solana Playground ` +
-        `is not fully compatible with Anchor.js 0.32.1. ` +
-        `Solution: Update the local IDL file or deploy the contract with proper IDL storage. ` +
-        `Original error: can't access property "_bn", t is undefined`
+      console.log('Generated keypairs:');
+      console.log('  mint:', mint.publicKey.toString());
+      console.log('  tokenConfig:', tokenConfig.publicKey.toString());
+
+      // Create the ownerTokenAccount address (PDA or derived address)
+      const ownerTokenAccount = await anchor.web3.PublicKey.findProgramAddress(
+        [Buffer.from("token-account"), this.provider.wallet.publicKey.toBuffer()],
+        new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ")
       );
+
+      console.log('ownerTokenAccount:', ownerTokenAccount[0].toString());
+
+      // Build and send transaction
+      console.log('Building createToken transaction...');
+      const tx = await program.methods
+        .createToken(
+          params.name,
+          params.symbol,
+          params.decimals,
+          new anchor.BN(params.initialSupply)
+        )
+        .accounts({
+          payer: this.provider.wallet.publicKey,
+          tokenConfig: tokenConfig.publicKey,
+          mint: mint.publicKey,
+          ownerTokenAccount: ownerTokenAccount[0],
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .signers([mint, tokenConfig])
+        .rpc();
+
+      console.log('✓ Token created successfully! Tx:', tx);
+      return tx;
     } catch (error) {
       console.error("=== Error Creating Token ===");
       console.error('Error:', error);
