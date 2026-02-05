@@ -38,7 +38,6 @@ jobs:
         run: |
           # Setup Rust environment
           export PATH="$HOME/.cargo/bin:$PATH"
-          export RUSTUP_TOOLCHAIN=nightly
           
           # Remove old lock file
           rm -f Cargo.lock
@@ -53,6 +52,9 @@ jobs:
           echo "=== Checking Cargo.toml files ==="
           ls -la Cargo.toml || echo "Root Cargo.toml not found"
           ls -la programs/forge_solana/Cargo.toml || echo "Program Cargo.toml not found"
+          
+          echo "=== Generate lock file with nightly ==="
+          cargo +nightly generate-lockfile --workspace || true
           
           echo "=== Starting build with cargo-build-sbf ==="
           cargo-build-sbf -- -p forge_solana
