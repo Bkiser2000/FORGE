@@ -1,6 +1,10 @@
 {
   "version": "0.1.0",
   "name": "forge_solana",
+  "metadata": {
+    "origin": "solita",
+    "address": "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF"
+  },
   "instructions": [
     {
       "name": "createToken",
@@ -13,17 +17,17 @@
         {
           "name": "tokenConfig",
           "isMut": true,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "mint",
           "isMut": true,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "ownerTokenAccount",
           "isMut": true,
-          "isSigner": false
+          "isSigner": true
         },
         {
           "name": "systemProgram",
