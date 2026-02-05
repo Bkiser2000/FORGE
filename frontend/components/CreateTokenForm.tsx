@@ -10,7 +10,7 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import { ForgeClient } from '../lib/forge-client';
+import ForgeClient from '../lib/forge-client';
 import { useTokens } from '../hooks/useTokens';
 
 interface CreateTokenFormProps {

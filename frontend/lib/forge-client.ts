@@ -35,13 +35,13 @@ export class ForgeClient {
       // Create a wallet adapter compatible object for Anchor
       const walletAdapter = {
         publicKey: wallet.publicKey,
-        signAllTransactions: wallet.signAllTransactions || async (txs: any[]) => {
+        signAllTransactions: wallet.signAllTransactions || async function(txs: any[]) {
           if (wallet.signTransaction) {
-            return Promise.all(txs.map(tx => wallet.signTransaction(tx)));
+            return Promise.all(txs.map(function(tx) { return wallet.signTransaction(tx); }));
           }
           return txs;
         },
-        signTransaction: wallet.signTransaction || async (tx: any) => tx,
+        signTransaction: wallet.signTransaction || async function(tx: any) { return tx; },
       };
 
       this.provider = new AnchorProvider(
@@ -156,3 +156,5 @@ export class ForgeClient {
     return PROGRAM_ID;
   }
 }
+
+export default ForgeClient;

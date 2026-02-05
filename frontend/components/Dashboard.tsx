@@ -117,45 +117,6 @@ const Dashboard: React.FC = () => {
             </CardContent>
           </Card>
         )}
-          </div>
-        )}
-
-        {/* Activity */}
-        {activeTab === "activity" && (
-          <div className="card">
-            <div className="space-y-4">
-              <div className="flex items-start space-x-4 pb-4 border-b border-gray-700">
-                <div className="w-10 h-10 rounded-full bg-blue-500 bg-opacity-20 flex items-center justify-center text-blue-400">
-                  ✓
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Created "Community Token" (COMM)</p>
-                  <p className="text-sm text-gray-400">on Solana • 4 days ago</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4 pb-4 border-b border-gray-700">
-                <div className="w-10 h-10 rounded-full bg-blue-500 bg-opacity-20 flex items-center justify-center text-blue-400">
-                  ✓
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Created "My First Token" (MFT)</p>
-                  <p className="text-sm text-gray-400">on Cronos • 5 days ago</p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="w-10 h-10 rounded-full bg-green-500 bg-opacity-20 flex items-center justify-center text-green-400">
-                  👤
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Account created</p>
-                  <p className="text-sm text-gray-400">7 days ago</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </section>
   );
