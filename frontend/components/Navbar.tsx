@@ -125,19 +125,23 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
 
           {/* Wallet Button */}
           <Box sx={{
-            '& button': {
-              backgroundColor: connected ? '#10b981 !important' : '#2563eb !important',
-              color: 'white !important',
-              fontWeight: 'bold !important',
-              padding: '8px 16px !important',
-              borderRadius: '8px !important',
-              border: 'none !important',
-              cursor: 'pointer !important',
-              fontSize: '14px !important',
-              transition: 'all 0.3s ease !important',
-              '&:hover': {
-                opacity: '0.9 !important',
-              },
+            '& .wallet-adapter-button': {
+              backgroundColor: connected ? '#10b981' : '#2563eb',
+              color: 'white',
+              fontWeight: 'bold',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px',
+              transition: 'all 0.3s ease',
+            },
+            '& .wallet-adapter-button:hover': {
+              opacity: 0.9,
+            },
+            '& .wallet-adapter-button:disabled': {
+              opacity: 0.5,
+              cursor: 'not-allowed',
             },
           }}>
             <WalletMultiButton />
