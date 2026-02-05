@@ -116,60 +116,45 @@ export class ForgeClient {
     try {
       console.log('=== Starting Token Creation ===');
       console.log('Parameters:', params);
-      console.log('Payer:', this.provider.wallet.publicKey.toString());
 
-      // Get IDL
-      console.log('Attempting to fetch IDL...');
+      // Get IDL - local first, then on-chain
       let idl: any = null;
-      
       try {
-        console.log('Fetching local IDL from /forge-idl.json...');
         const response = await fetch('/forge-idl.json', { cache: 'no-cache' });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        idl = await response.json();
-        console.log('✓ IDL loaded from local cache');
-      } catch (fetchErr) {
-        console.warn('Failed to load local IDL, trying on-chain...');
+        if (response.ok) {
+          idl = await response.json();
+          console.log('✓ IDL loaded from local cache');
+        }
+      } catch {}
+
+      if (!idl) {
         try {
           idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
           console.log('✓ IDL fetched from on-chain');
-        } catch (onChainErr) {
-          throw new Error('IDL not found in local cache or on-chain');
+        } catch (err) {
+          throw new Error('IDL not found');
         }
       }
 
-      if (!idl) throw new Error("IDL is null/undefined");
+      if (!idl) throw new Error("IDL is null");
 
-      // Setup Anchor program
-      const idlWithMetadata = idl as any;
-      if (!idlWithMetadata.metadata) {
-        idlWithMetadata.metadata = {};
-      }
-      idlWithMetadata.metadata.address = getProgramId().toString();
-      
-      const program = new anchor.Program(
-        idlWithMetadata as anchor.Idl,
-        this.provider
-      );
+      // Create program
+      const program = new anchor.Program(idl as anchor.Idl, this.provider);
 
       // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
       const tokenConfig = anchor.web3.Keypair.generate();
       const ownerTokenAccount = anchor.web3.Keypair.generate();
-      
-      console.log('Generated keypairs:');
-      console.log('  mint:', mint.publicKey.toString());
-      console.log('  tokenConfig:', tokenConfig.publicKey.toString());
-      console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      // Build instruction using Anchor's methods builder
-      console.log('Building instruction with Anchor...');
-      const instruction = await program.methods
+      console.log('Sending createToken RPC...');
+      
+      // Use Anchor's rpc() method - let it handle everything
+      const signature = await program.methods
         .createToken(
           params.name,
           params.symbol,
           params.decimals,
-          new anchor.BN(params.initialSupply)
+          params.initialSupply  // Plain number, no BN wrapping
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
@@ -180,44 +165,16 @@ export class ForgeClient {
           tokenProgram: getTokenProgramId(),
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
-        .instruction();
+        .signers([mint, tokenConfig, ownerTokenAccount])
+        .rpc();
 
-      console.log('✓ Instruction built');
-      console.log('Instruction data (hex):', instruction.data.toString('hex'));
-
-      // Get recent blockhash with retry
-      let blockhash;
-      let lastError;
-      for (let i = 0; i < 3; i++) {
-        try {
-          const blockHashObj = await this.getConnection().getLatestBlockhash('confirmed');
-          blockhash = blockHashObj.blockhash;
-          console.log('✓ Got blockhash:', blockhash);
-          break;
-        } catch (err) {
-          lastError = err;
-          console.warn(`Attempt ${i + 1}/3 to get blockhash failed:`, err);
-          if (i < 2) await new Promise(r => setTimeout(r, 500));
-        }
-      }
-      if (!blockhash) throw new Error(`Failed to get blockhash after 3 attempts: ${lastError}`);
-
-      // Build transaction
-      const transaction = new Transaction({ recentBlockhash: blockhash, feePayer: this.provider.wallet.publicKey });
-      transaction.add(instruction);
-      transaction.sign(mint, tokenConfig, ownerTokenAccount);
-
-      // Sign and send
-      const signature = await this.provider.sendAndConfirm(transaction, [mint, tokenConfig, ownerTokenAccount]);
       console.log('✓ Transaction sent! Signature:', signature);
-      
       return signature;
     } catch (error) {
       console.error("=== Error Creating Token ===");
       console.error('Error:', error);
       if (error instanceof Error) {
         console.error('Message:', error.message);
-        console.error('Stack:', error.stack);
       }
       throw error;
     }
@@ -230,21 +187,11 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      // Ensure IDL has programId metadata for proper serialization
-      const idlWithMetadata = idl as any;
-      if (!idlWithMetadata.metadata) {
-        idlWithMetadata.metadata = {};
-      }
-      idlWithMetadata.metadata.address = getProgramId().toString();
-
-      const program = new anchor.Program(
-        idlWithMetadata as anchor.Idl,
-        this.provider
-      );
+      const program = new anchor.Program(idl as anchor.Idl, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .mintTokens(new anchor.BN(Math.floor(amount)))
+        .mintTokens(Math.floor(amount))  // Plain number
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
@@ -266,21 +213,11 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      // Ensure IDL has programId metadata for proper serialization
-      const idlWithMetadata = idl as any;
-      if (!idlWithMetadata.metadata) {
-        idlWithMetadata.metadata = {};
-      }
-      idlWithMetadata.metadata.address = getProgramId().toString();
-
-      const program = new anchor.Program(
-        idlWithMetadata as anchor.Idl,
-        this.provider
-      );
+      const program = new anchor.Program(idl as anchor.Idl, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .burnTokens(new anchor.BN(Math.floor(amount)))
+        .burnTokens(Math.floor(amount))  // Plain number
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
