@@ -121,11 +121,25 @@ export class ForgeClient {
       console.log('IDL Keys:', Object.keys(idl || {}).sort());
       console.log('Instructions:', idl.instructions.map((i: any) => i.name));
       console.log('Accounts:', idl.accounts?.map((a: any) => a.name) || []);
+      console.log('Creating Program instance with IDL...');
+      console.log('PROGRAM_ID:', PROGRAM_ID.toString());
+      console.log('Provider wallet:', this.provider.wallet.publicKey.toString());
       
-      // Create the Program instance with the corrected IDL
-      console.log('Creating Program instance...');
-      const program = new (anchor.Program as any)(idl, PROGRAM_ID, this.provider);
-      console.log('✓ Program instance created successfully');
+      let program: any;
+      try {
+        // Create the Program instance with the corrected IDL
+        console.log('Attempting new Program() constructor...');
+        program = new anchor.Program(idl as Idl, PROGRAM_ID, this.provider);
+        console.log('✓ Program instance created successfully');
+      } catch (programErr) {
+        console.error('Program creation failed:', programErr);
+        if (programErr instanceof Error) {
+          console.error('Error name:', programErr.name);
+          console.error('Error message:', programErr.message);
+          console.error('Error stack:', programErr.stack);
+        }
+        throw new Error(`Failed to instantiate Program: ${programErr instanceof Error ? programErr.message : String(programErr)}`);
+      }
 
       // Generate keypairs for mint and tokenConfig accounts
       const mint = anchor.web3.Keypair.generate();
@@ -153,25 +167,30 @@ export class ForgeClient {
         initialSupplyBN: new BN(params.initialSupply).toString()
       });
       
-      const tx = await program.methods
-        .createToken(
-          params.name,
-          params.symbol,
-          params.decimals,
-          new BN(params.initialSupply)
-        )
-        .accounts({
-          payer: this.provider.wallet.publicKey,
-          tokenConfig: tokenConfig.publicKey,
-          mint: mint.publicKey,
-          ownerTokenAccount: ownerTokenAccount[0],
-          systemProgram: anchor.web3.SystemProgram.programId,
-          tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        })
-        .signers([mint, tokenConfig])
-        .rpc();
-
+      console.log('Getting method builder...');
+      const methodBuilder = program.methods.createToken(
+        params.name,
+        params.symbol,
+        params.decimals,
+        new BN(params.initialSupply)
+      );
+      console.log('✓ Method builder created');
+      
+      const accountsBuilder = methodBuilder.accounts({
+        payer: this.provider.wallet.publicKey,
+        tokenConfig: tokenConfig.publicKey,
+        mint: mint.publicKey,
+        ownerTokenAccount: ownerTokenAccount[0],
+        systemProgram: anchor.web3.SystemProgram.programId,
+        tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
+        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+      });
+      console.log('✓ Accounts set');
+      
+      const signersBuilder = accountsBuilder.signers([mint, tokenConfig]);
+      console.log('✓ Signers set');
+      
+      const tx = await signersBuilder.rpc();
       console.log('✓ Token created successfully! Tx:', tx);
       return tx;
     } catch (error) {
