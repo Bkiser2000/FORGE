@@ -3,9 +3,25 @@ import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection } from "@solana/web3.js";
 import { BN } from "bn.js";
 
-const PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
 const DEVNET_RPC = "https://api.devnet.solana.com";
-const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+
+// Lazy-load PublicKeys to avoid errors during SSR
+let PROGRAM_ID: PublicKey | null = null;
+let TOKEN_PROGRAM_ID: PublicKey | null = null;
+
+const getProgramId = (): PublicKey => {
+  if (!PROGRAM_ID) {
+    PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+  }
+  return PROGRAM_ID;
+};
+
+const getTokenProgramId = (): PublicKey => {
+  if (!TOKEN_PROGRAM_ID) {
+    TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ");
+  }
+  return TOKEN_PROGRAM_ID;
+};
 
 export interface CreateTokenParams {
   name: string;
@@ -105,7 +121,7 @@ export class ForgeClient {
         // Fallback to on-chain IDL
         try {
           console.log('Trying to fetch IDL from on-chain...');
-          idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
+          idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
           if (idl) {
             console.log('✓ IDL fetched from on-chain');
           } else {
@@ -187,7 +203,7 @@ export class ForgeClient {
       const rentSysvar = anchor.web3.SYSVAR_RENT_PUBKEY;
       
       console.log('System program:', systemProgram.toString());
-      console.log('Token program:', TOKEN_PROGRAM_ID.toString());
+      console.log('Token program:', getTokenProgramId().toString());
       console.log('Rent sysvar:', rentSysvar.toString());
       console.log('Creating instruction with keys...');
       console.log('Keys:', {
@@ -196,19 +212,19 @@ export class ForgeClient {
         mint: mint.publicKey.toString(),
         ownerTokenAccount: ownerTokenAccount.publicKey.toString(),
         systemProgram: systemProgram.toString(),
-        tokenProgram: TOKEN_PROGRAM_ID.toString(),
+        tokenProgram: getTokenProgramId().toString(),
         rentSysvar: rentSysvar.toString(),
       });
       
       const instruction = new anchor.web3.TransactionInstruction({
-        programId: PROGRAM_ID,
+        programId: getProgramId(),
         keys: [
           { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
           { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
           { pubkey: mint.publicKey, isSigner: true, isWritable: true },
           { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
           { pubkey: systemProgram, isSigner: false, isWritable: false },
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+          { pubkey: getTokenProgramId(), isSigner: false, isWritable: false },
           { pubkey: rentSysvar, isSigner: false, isWritable: false },
         ],
         data: instructionData,
@@ -259,10 +275,10 @@ export class ForgeClient {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      const idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
+      const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const idlWithProgramId = { ...idl, metadata: { address: PROGRAM_ID.toString() } };
+      const idlWithProgramId = { ...idl, metadata: { address: getProgramId().toString() } };
       const program = new anchor.Program(idlWithProgramId as any, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
@@ -273,7 +289,7 @@ export class ForgeClient {
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
-          tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
+          tokenProgram: getTokenProgramId(),
         })
         .rpc();
 
@@ -288,10 +304,10 @@ export class ForgeClient {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      const idl = await anchor.Program.fetchIdl(PROGRAM_ID, this.provider);
+      const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const idlWithProgramId = { ...idl, metadata: { address: PROGRAM_ID.toString() } };
+      const idlWithProgramId = { ...idl, metadata: { address: getProgramId().toString() } };
       const program = new anchor.Program(idlWithProgramId as any, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
@@ -300,7 +316,7 @@ export class ForgeClient {
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
-          tokenProgram: new PublicKey("TokenkegQfeZyiNwAJsyFbPVwwQQfuE32gencpExFACQ"),
+          tokenProgram: getTokenProgramId(),
         })
         .rpc();
 
@@ -312,7 +328,7 @@ export class ForgeClient {
   }
 
   getProgramId(): PublicKey {
-    return PROGRAM_ID;
+    return getProgramId();
   }
 }
 
