@@ -170,8 +170,10 @@ export class ForgeClient {
           tx.recentBlockhash = latestBlockhash.blockhash;
           tx.feePayer = this.provider.wallet.publicKey;
 
-          // Sign transaction
-          tx.sign(mint, tokenConfig, ownerTokenAccount);
+          // Sign with all required keypairs
+          tx.partialSign(mint, tokenConfig, ownerTokenAccount);
+          
+          // Get wallet to sign
           const signed = await this.provider.wallet.signTransaction(tx);
 
           // Send transaction
@@ -217,6 +219,7 @@ export class ForgeClient {
   ): Promise<anchor.web3.TransactionInstruction> {
     // Compute discriminator: SHA256("global:instruction:createToken").slice(0, 8)
     const discriminator = await this.computeDiscriminator('createToken');
+    console.log('Computed discriminator:', discriminator.toString('hex'));
 
     // Encode parameters manually
     let data = discriminator;
@@ -226,22 +229,26 @@ export class ForgeClient {
     const nameLen = Buffer.alloc(4);
     nameLen.writeUInt32LE(nameBuffer.length);
     data = Buffer.concat([data, nameLen, nameBuffer]);
+    console.log('After name:', data.toString('hex'));
 
     // Encode string: symbol
     const symbolBuffer = Buffer.from(params.symbol, 'utf8');
     const symbolLen = Buffer.alloc(4);
     symbolLen.writeUInt32LE(symbolBuffer.length);
     data = Buffer.concat([data, symbolLen, symbolBuffer]);
+    console.log('After symbol:', data.toString('hex'));
 
     // Encode u8: decimals
     data = Buffer.concat([data, Buffer.from([params.decimals])]);
+    console.log('After decimals:', data.toString('hex'));
 
     // Encode u64: initialSupply (little-endian)
     const supplyBuffer = Buffer.alloc(8);
     supplyBuffer.writeBigUInt64LE(BigInt(params.initialSupply));
     data = Buffer.concat([data, supplyBuffer]);
+    console.log('After supply:', data.toString('hex'));
 
-    // Build accounts array
+    // Build accounts array - order matters! Match IDL exactly
     const accounts = [
       { pubkey: this.provider!.wallet.publicKey, isSigner: true, isWritable: true }, // payer
       { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true }, // tokenConfig
@@ -252,7 +259,9 @@ export class ForgeClient {
       { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }, // rent
     ];
 
-    console.log('Creating instruction with discriminator:', discriminator.toString('hex'));
+    console.log('Instruction data length:', data.length);
+    console.log('Full instruction data:', data.toString('hex'));
+    console.log('Creating transaction instruction...');
 
     return new anchor.web3.TransactionInstruction({
       programId: getProgramId(),
@@ -263,10 +272,16 @@ export class ForgeClient {
 
   private async computeDiscriminator(instructionName: string): Promise<Buffer> {
     const namespace = `global:instruction:${instructionName}`;
+    console.log('Computing discriminator for:', namespace);
     const encoder = new TextEncoder();
     const data = encoder.encode(namespace);
+    console.log('Encoded namespace bytes:', Buffer.from(data).toString('hex'));
     const hashBuffer = await crypto.subtle.digest('SHA-256', data as any);
-    return Buffer.from(hashBuffer).slice(0, 8);
+    const hash = Buffer.from(hashBuffer);
+    console.log('Full SHA256 hash:', hash.toString('hex'));
+    const disc = hash.slice(0, 8);
+    console.log('Discriminator (first 8 bytes):', disc.toString('hex'));
+    return disc;
   }
 
   async mintTokens(tokenConfigPubkey: string, amount: number): Promise<string> {
