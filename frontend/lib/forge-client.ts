@@ -139,7 +139,7 @@ export class ForgeClient {
       if (!idl) throw new Error("IDL is null");
 
       // Create program
-      const program = new anchor.Program(idl as anchor.Idl, this.provider);
+      const program = new anchor.Program(idl as anchor.Idl, getProgramId(), this.provider);
 
       // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
@@ -187,7 +187,7 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const program = new anchor.Program(idl as anchor.Idl, this.provider);
+      const program = new anchor.Program(idl as anchor.Idl, getProgramId(), this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
@@ -213,7 +213,7 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const program = new anchor.Program(idl as anchor.Idl, this.provider);
+      const program = new anchor.Program(idl as anchor.Idl, getProgramId(), this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
