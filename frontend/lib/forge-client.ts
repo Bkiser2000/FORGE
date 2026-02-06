@@ -139,7 +139,7 @@ export class ForgeClient {
       if (!idl) throw new Error("IDL is null");
 
       // Create program
-      const program = new anchor.Program(idl as anchor.Idl, getProgramId(), this.provider);
+      const program = new anchor.Program(idl as anchor.Idl, this.provider);
 
       // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
@@ -148,13 +148,16 @@ export class ForgeClient {
 
       console.log('Sending createToken RPC...');
       
+      // Convert initialSupply to BN for u64 type
+      const initialSupplyBN = new anchor.BN(params.initialSupply);
+      
       // Use Anchor's rpc() method - let it handle everything
       const signature = await program.methods
         .createToken(
           params.name,
           params.symbol,
           params.decimals,
-          params.initialSupply  // Plain number, no BN wrapping
+          initialSupplyBN
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
@@ -187,11 +190,14 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const program = new anchor.Program(idl as anchor.Idl, getProgramId(), this.provider);
+      const program = new anchor.Program(idl as anchor.Idl, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
+      // Convert amount to BN for u64 type
+      const amountBN = new anchor.BN(Math.floor(amount));
+      
       const tx = await program.methods
-        .mintTokens(Math.floor(amount))  // Plain number
+        .mintTokens(amountBN)
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
@@ -213,11 +219,14 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
-      const program = new anchor.Program(idl as anchor.Idl, getProgramId(), this.provider);
+      const program = new anchor.Program(idl as anchor.Idl, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
+      // Convert amount to BN for u64 type
+      const amountBN = new anchor.BN(Math.floor(amount));
+      
       const tx = await program.methods
-        .burnTokens(Math.floor(amount))  // Plain number
+        .burnTokens(amountBN)
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
