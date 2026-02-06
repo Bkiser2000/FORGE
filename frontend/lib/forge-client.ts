@@ -215,10 +215,8 @@ export class ForgeClient {
     ownerTokenAccount: anchor.web3.Keypair,
     idl: any
   ): Promise<anchor.web3.TransactionInstruction> {
-    // Compute discriminator manually: SHA256("global:instruction:createToken")
-    const discriminator = Buffer.concat([
-      Buffer.from([0x2e, 0x0f, 0xc6, 0x84, 0xf9, 0x86, 0x69, 0xd9])
-    ]);
+    // Compute discriminator: SHA256("global:instruction:createToken").slice(0, 8)
+    const discriminator = await this.computeDiscriminator('createToken');
 
     // Encode parameters manually
     let data = discriminator;
@@ -261,6 +259,14 @@ export class ForgeClient {
       keys: accounts,
       data: data,
     });
+  }
+
+  private async computeDiscriminator(instructionName: string): Promise<Buffer> {
+    const namespace = `global:instruction:${instructionName}`;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(namespace);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data as any);
+    return Buffer.from(hashBuffer).slice(0, 8);
   }
 
   async mintTokens(tokenConfigPubkey: string, amount: number): Promise<string> {
