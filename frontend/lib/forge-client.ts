@@ -117,29 +117,29 @@ export class ForgeClient {
       console.log('=== Starting Token Creation ===');
       console.log('Parameters:', params);
 
-      // Get IDL - local first, then on-chain
+      // Load IDL - local first (preferred), then on-chain
       let idl: any = null;
       try {
         const response = await fetch('/forge-idl.json', { cache: 'no-cache' });
         if (response.ok) {
           idl = await response.json();
-          console.log('✓ IDL loaded');
+          console.log('✓ IDL loaded from local cache');
         }
       } catch (e) {
         console.log('Local IDL failed, trying on-chain...');
       }
 
+      // Only fetch on-chain if local failed
       if (!idl) {
         idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
         if (!idl) throw new Error("IDL not found");
         console.log('✓ IDL fetched from on-chain');
+        // Add programId to on-chain IDL
+        (idl as any).metadata = (idl as any).metadata || {};
+        (idl as any).metadata.address = getProgramId().toString();
       }
 
-      // Ensure IDL has programId metadata for serialization
-      (idl as any).metadata = (idl as any).metadata || {};
-      (idl as any).metadata.address = getProgramId().toString();
-
-      // Create program - programId is in IDL metadata
+      // Create program - IDL has metadata.address
       const program = new anchor.Program(
         idl as anchor.Idl,
         this.provider
