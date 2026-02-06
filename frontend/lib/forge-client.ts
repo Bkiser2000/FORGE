@@ -217,7 +217,7 @@ export class ForgeClient {
     ownerTokenAccount: anchor.web3.Keypair,
     idl: any
   ): Promise<anchor.web3.TransactionInstruction> {
-    // Compute discriminator: SHA256("global:instruction:createToken").slice(0, 8)
+    // Compute discriminator: SHA256("global:instruction:create_token").slice(0, 8)
     const discriminator = await this.computeDiscriminator('createToken');
     console.log('Computed discriminator:', discriminator.toString('hex'));
 
