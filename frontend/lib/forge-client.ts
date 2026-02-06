@@ -139,41 +139,65 @@ export class ForgeClient {
         (idl as any).metadata.address = getProgramId().toString();
       }
 
-      // Create program - IDL has metadata.address
-      const program = new anchor.Program(
-        idl as anchor.Idl,
-        this.provider
-      );
-
       // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
       const tokenConfig = anchor.web3.Keypair.generate();
       const ownerTokenAccount = anchor.web3.Keypair.generate();
 
-      console.log('Sending createToken RPC...');
-      
-      // Use Anchor's rpc() with plain numbers
-      const signature = await program.methods
-        .createToken(
-          params.name,
-          params.symbol,
-          params.decimals,
-          params.initialSupply
-        )
-        .accounts({
-          payer: this.provider.wallet.publicKey,
-          tokenConfig: tokenConfig.publicKey,
-          mint: mint.publicKey,
-          ownerTokenAccount: ownerTokenAccount.publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId,
-          tokenProgram: getTokenProgramId(),
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-        })
-        .signers([mint, tokenConfig, ownerTokenAccount])
-        .rpc();
+      // Build instruction manually to avoid Anchor's BN serializer issues
+      const createTokenInstruction = await this.buildCreateTokenInstruction(
+        params,
+        mint,
+        tokenConfig,
+        ownerTokenAccount,
+        idl
+      );
 
-      console.log('✓ Transaction sent! Signature:', signature);
-      return signature;
+      // Get latest blockhash with retry logic
+      const connection = this.getConnection();
+      let latestBlockhash = await connection.getLatestBlockhash('finalized');
+      let attempts = 0;
+      const maxAttempts = 3;
+
+      while (attempts < maxAttempts) {
+        try {
+          console.log(`Attempt ${attempts + 1}/${maxAttempts}: Sending transaction...`);
+
+          // Create transaction
+          const tx = new anchor.web3.Transaction()
+            .add(createTokenInstruction);
+
+          tx.recentBlockhash = latestBlockhash.blockhash;
+          tx.feePayer = this.provider.wallet.publicKey;
+
+          // Sign transaction
+          tx.sign(mint, tokenConfig, ownerTokenAccount);
+          const signed = await this.provider.wallet.signTransaction(tx);
+
+          // Send transaction
+          const signature = await connection.sendRawTransaction(signed.serialize());
+          console.log('✓ Transaction sent! Signature:', signature);
+
+          // Wait for confirmation
+          await connection.confirmTransaction({
+            blockhash: latestBlockhash.blockhash,
+            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            signature: signature,
+          });
+
+          console.log('✓ Transaction confirmed!');
+          return signature;
+        } catch (error: any) {
+          attempts++;
+          if (attempts >= maxAttempts) throw error;
+
+          console.log(`Attempt ${attempts} failed:`, error?.message);
+          // Get fresh blockhash for retry
+          latestBlockhash = await connection.getLatestBlockhash('finalized');
+        }
+      }
+
+      throw new Error('Transaction failed after max retries');
     } catch (error) {
       console.error("=== Error Creating Token ===");
       console.error('Error:', error);
@@ -182,6 +206,61 @@ export class ForgeClient {
       }
       throw error;
     }
+  }
+
+  private async buildCreateTokenInstruction(
+    params: CreateTokenParams,
+    mint: anchor.web3.Keypair,
+    tokenConfig: anchor.web3.Keypair,
+    ownerTokenAccount: anchor.web3.Keypair,
+    idl: any
+  ): Promise<anchor.web3.TransactionInstruction> {
+    // Compute discriminator manually: SHA256("global:instruction:createToken")
+    const discriminator = Buffer.concat([
+      Buffer.from([0x2e, 0x0f, 0xc6, 0x84, 0xf9, 0x86, 0x69, 0xd9])
+    ]);
+
+    // Encode parameters manually
+    let data = discriminator;
+
+    // Encode string: name
+    const nameBuffer = Buffer.from(params.name, 'utf8');
+    const nameLen = Buffer.alloc(4);
+    nameLen.writeUInt32LE(nameBuffer.length);
+    data = Buffer.concat([data, nameLen, nameBuffer]);
+
+    // Encode string: symbol
+    const symbolBuffer = Buffer.from(params.symbol, 'utf8');
+    const symbolLen = Buffer.alloc(4);
+    symbolLen.writeUInt32LE(symbolBuffer.length);
+    data = Buffer.concat([data, symbolLen, symbolBuffer]);
+
+    // Encode u8: decimals
+    data = Buffer.concat([data, Buffer.from([params.decimals])]);
+
+    // Encode u64: initialSupply (little-endian)
+    const supplyBuffer = Buffer.alloc(8);
+    supplyBuffer.writeBigUInt64LE(BigInt(params.initialSupply));
+    data = Buffer.concat([data, supplyBuffer]);
+
+    // Build accounts array
+    const accounts = [
+      { pubkey: this.provider!.wallet.publicKey, isSigner: true, isWritable: true }, // payer
+      { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true }, // tokenConfig
+      { pubkey: mint.publicKey, isSigner: true, isWritable: true }, // mint
+      { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true }, // ownerTokenAccount
+      { pubkey: anchor.web3.SystemProgram.programId, isSigner: false, isWritable: false }, // systemProgram
+      { pubkey: getTokenProgramId(), isSigner: false, isWritable: false }, // tokenProgram
+      { pubkey: anchor.web3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false }, // rent
+    ];
+
+    console.log('Creating instruction with discriminator:', discriminator.toString('hex'));
+
+    return new anchor.web3.TransactionInstruction({
+      programId: getProgramId(),
+      keys: accounts,
+      data: data,
+    });
   }
 
   async mintTokens(tokenConfigPubkey: string, amount: number): Promise<string> {
