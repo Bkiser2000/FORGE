@@ -135,6 +135,10 @@ export class ForgeClient {
         console.log('✓ IDL fetched from on-chain');
       }
 
+      // Ensure IDL has programId metadata for serialization
+      (idl as any).metadata = (idl as any).metadata || {};
+      (idl as any).metadata.address = getProgramId().toString();
+
       // Create program - programId is in IDL metadata
       const program = new anchor.Program(
         idl as anchor.Idl,
@@ -187,6 +191,10 @@ export class ForgeClient {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
 
+      // Ensure IDL has programId metadata for serialization
+      (idl as any).metadata = (idl as any).metadata || {};
+      (idl as any).metadata.address = getProgramId().toString();
+
       const program = new anchor.Program(idl as anchor.Idl, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
@@ -212,6 +220,10 @@ export class ForgeClient {
     try {
       const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
       if (!idl) throw new Error("IDL not found");
+
+      // Ensure IDL has programId metadata for serialization
+      (idl as any).metadata = (idl as any).metadata || {};
+      (idl as any).metadata.address = getProgramId().toString();
 
       const program = new anchor.Program(idl as anchor.Idl, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
