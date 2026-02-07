@@ -33,17 +33,17 @@ jobs:
       - name: Install Rust
         run: |
           echo "=== Installing Rust toolchain ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --default-toolchain stable --no-modify-path
-          ls -la /root/.cargo/ || echo "No .cargo directory"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --default-toolchain stable
+          echo "=== Checking installation directories ==="
+          find /root -name "cargo" -type f 2>/dev/null | head -5
+          find /home -name "cargo" -type f 2>/dev/null | head -5
+          find /usr -name "cargo" -type f 2>/dev/null | head -5
           echo "=== Rust installation complete ==="
 
       - name: Verify Rust Installation
+        shell: bash
         run: |
-          if [ -f /root/.cargo/env ]; then
-            . /root/.cargo/env
-          else
-            export PATH="/root/.cargo/bin:/root/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin:$PATH"
-          fi
+          source /root/.cargo/env
           echo "=== Checking Rust tools ==="
           which rustc && rustc --version || echo "rustc not found"
           which cargo && cargo --version || echo "cargo not found"
@@ -52,12 +52,9 @@ jobs:
 
       - name: Build Solana Contract
         working-directory: ./contracts/solana/programs/forge_solana
+        shell: bash
         run: |
-          if [ -f /root/.cargo/env ]; then
-            . /root/.cargo/env
-          else
-            export PATH="/root/.cargo/bin:/root/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin:$PATH"
-          fi
+          source /root/.cargo/env
           echo "=== Current directory ==="
           pwd
           echo "=== Starting Solana contract build ==="
@@ -75,12 +72,9 @@ jobs:
 
       - name: Verify Build Output
         working-directory: ./contracts/solana/programs/forge_solana
+        shell: bash
         run: |
-          if [ -f /root/.cargo/env ]; then
-            . /root/.cargo/env
-          else
-            export PATH="/root/.cargo/bin:/root/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin:$PATH"
-          fi
+          source /root/.cargo/env
           echo "=== Current working directory ==="
           pwd
           
