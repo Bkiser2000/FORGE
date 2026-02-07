@@ -9,92 +9,45 @@ on:
       - 'contracts/solana/**'
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
-    container:
-      image: solanalabs/solana:v1.18.0
     steps:
       - uses: actions/checkout@v4
 
-      - name: Remove Cargo.lock Files
-        run: |
-          echo "=== Removing ALL Cargo.lock files ==="
-          find . -name "Cargo.lock" -delete -print
-          echo "=== Verifying removal ==="
-          find . -name "Cargo.lock" && echo "ERROR: Cargo.lock still exists" || echo "✓ All Cargo.lock files removed"
-
-      - name: Install Dependencies
-        run: |
-          echo "=== Installing dependencies ==="
-          apt-get update
-          apt-get install -y curl build-essential pkg-config
-          echo "✓ Dependencies installed"
-
       - name: Install Rust
-        run: |
-          echo "=== Installing Rust toolchain ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --default-toolchain stable
-          echo "=== Checking installation directories ==="
-          find /root -name "cargo" -type f 2>/dev/null | head -5
-          find /home -name "cargo" -type f 2>/dev/null | head -5
-          find /usr -name "cargo" -type f 2>/dev/null | head -5
-          echo "=== Rust installation complete ==="
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
 
-      - name: Verify Rust Installation
-        shell: bash
-        run: |
-          source /root/.cargo/env
-          echo "=== Checking Rust tools ==="
-          which rustc && rustc --version || echo "rustc not found"
-          which cargo && cargo --version || echo "cargo not found"
-          which solana && solana --version || echo "solana not found"
-          echo "=== Environment ready ==="
+      - name: Cache cargo registry
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry
+          key: cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/git
+          key: cargo-git-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v3
+        with:
+          path: contracts/solana/target
+          key: cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build Solana Contract
-        working-directory: ./contracts/solana/programs/forge_solana
-        shell: bash
+        working-directory: contracts/solana
         run: |
-          source /root/.cargo/env
-          echo "=== Current directory ==="
-          pwd
-          echo "=== Starting Solana contract build ==="
-          cargo build --release 2>&1
-          BUILD_STATUS=$?
-          echo "=== Build exit code: $BUILD_STATUS ==="
-          
-          echo "=== What's in current directory after build ==="
-          ls -la
-          
-          echo "=== Check if target exists ==="
-          [ -d target ] && echo "target directory exists" || echo "target directory DOES NOT exist"
-          
-          exit $BUILD_STATUS
+          cargo build --release
+          echo "✓ Build successful"
 
       - name: Verify Build Output
-        working-directory: ./contracts/solana/programs/forge_solana
-        shell: bash
+        working-directory: contracts/solana
         run: |
-          source /root/.cargo/env
-          echo "=== Current working directory ==="
-          pwd
-          
-          echo "=== Listing target directory contents ==="
-          if [ -d target ]; then
-            echo "target exists, contents:"
-            ls -la target/
-            echo ""
-            echo "=== Full tree of target directory ==="
-            find target -type f | head -50
-          else
-            echo "ERROR: target directory does not exist!"
-            echo "=== Contents of current directory ==="
-            ls -la
-          fi
-
-      - name: Upload Artifacts
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: solana-build-artifacts
-          path: contracts/solana/programs/forge_solana/target/release/
-          if-no-files-found: warn
+          echo "=== Build artifacts ==="
+          ls -lah target/release/*.so 2>/dev/null || echo "No .so files found"
+          echo ""
+          echo "=== Full target directory ==="
+          du -sh target/release
