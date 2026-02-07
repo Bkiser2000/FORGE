@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useContext } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import "@solana/wallet-adapter-react-ui/styles.css";
@@ -17,9 +17,75 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const walletContext = useContext(WalletContext);
   const { selectedChain, setSelectedChain } = walletContext || {};
   const { connected } = useWallet();
+  const [metaMaskAccount, setMetaMaskAccount] = useState<string | null>(null);
+  const [isLoadingMetaMask, setIsLoadingMetaMask] = useState(false);
+
+  // Check for MetaMask connection on mount and listen for changes
+  useEffect(() => {
+    const checkMetaMaskConnection = async () => {
+      if (typeof window === 'undefined') return;
+      
+      const provider = window.ethereum?.isMetaMask ? window.ethereum : 
+                      window.ethereum?.providers?.find((p: any) => p.isMetaMask);
+      
+      if (!provider) {
+        setMetaMaskAccount(null);
+        return;
+      }
+
+      try {
+        const accounts = await provider.request({ method: 'eth_accounts' });
+        if (accounts && accounts.length > 0) {
+          setMetaMaskAccount(accounts[0]);
+        }
+      } catch (err) {
+        console.error('Error checking MetaMask connection:', err);
+      }
+    };
+
+    checkMetaMaskConnection();
+
+    // Listen for account changes
+    if (typeof window !== 'undefined') {
+      const provider = window.ethereum?.isMetaMask ? window.ethereum : 
+                      window.ethereum?.providers?.find((p: any) => p.isMetaMask);
+      
+      if (provider) {
+        provider.on('accountsChanged', (accounts: string[]) => {
+          if (accounts && accounts.length > 0) {
+            setMetaMaskAccount(accounts[0]);
+          } else {
+            setMetaMaskAccount(null);
+          }
+        });
+      }
+    }
+  }, []);
 
   const formatWallet = (wallet: string) => {
     return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
+  };
+
+  const connectMetaMask = async () => {
+    setIsLoadingMetaMask(true);
+    try {
+      const provider = window.ethereum?.isMetaMask ? window.ethereum : 
+                      window.ethereum?.providers?.find((p: any) => p.isMetaMask);
+      
+      if (!provider) {
+        alert('MetaMask is not installed. Please install it to continue.');
+        return;
+      }
+
+      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      if (accounts && accounts.length > 0) {
+        setMetaMaskAccount(accounts[0]);
+      }
+    } catch (err) {
+      console.error('Error connecting MetaMask:', err);
+    } finally {
+      setIsLoadingMetaMask(false);
+    }
   };
 
   return (
@@ -125,29 +191,57 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
             <MenuItem value="cronos">🔗 Cronos</MenuItem>
           </Select>
 
-          {/* Wallet Button */}
-          <Box sx={{
-            '& .wallet-adapter-button': {
-              backgroundColor: connected ? '#10b981' : '#2563eb',
-              color: 'white',
-              fontWeight: 'bold',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '14px',
-              transition: 'all 0.3s ease',
-            },
-            '& .wallet-adapter-button:hover': {
-              opacity: 0.9,
-            },
-            '& .wallet-adapter-button:disabled': {
-              opacity: 0.5,
-              cursor: 'not-allowed',
-            },
-          }}>
-            <WalletMultiButton />
-          </Box>
+          {/* Wallet Buttons */}
+          {selectedChain === "solana" ? (
+            <Box sx={{
+              '& .wallet-adapter-button': {
+                backgroundColor: connected ? '#10b981' : '#2563eb',
+                color: 'white',
+                fontWeight: 'bold',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '14px',
+                transition: 'all 0.3s ease',
+              },
+              '& .wallet-adapter-button:hover': {
+                opacity: 0.9,
+              },
+              '& .wallet-adapter-button:disabled': {
+                opacity: 0.5,
+                cursor: 'not-allowed',
+              },
+            }}>
+              <WalletMultiButton />
+            </Box>
+          ) : (
+            // MetaMask wallet button for Cronos
+            <Button
+              onClick={connectMetaMask}
+              disabled={isLoadingMetaMask}
+              sx={{
+                backgroundColor: metaMaskAccount ? '#10b981' : '#2563eb',
+                color: 'white',
+                fontWeight: 'bold',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: isLoadingMetaMask ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                transition: 'all 0.3s ease',
+                textTransform: 'none',
+                '&:hover': {
+                  opacity: 0.9,
+                },
+                '&:disabled': {
+                  opacity: 0.5,
+                }
+              }}
+            >
+              {isLoadingMetaMask ? 'Connecting...' : metaMaskAccount ? formatWallet(metaMaskAccount) : 'Connect MetaMask'}
+            </Button>
+          )}
         </Box>
       </Toolbar>
     </AppBar>
