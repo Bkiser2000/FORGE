@@ -29,23 +29,23 @@ jobs:
         run: |
           echo "=== Installing dependencies ==="
           apt-get update
-          apt-get install -y build-essential pkg-config
+          apt-get install -y curl build-essential pkg-config
           echo "✓ Dependencies installed"
+
+      - name: Install Rust
+        run: |
+          echo "=== Installing Rust toolchain ==="
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+          echo "✓ Rust installed"
+          echo "=== Rust installation complete ==="
 
       - name: Verify Rust Installation
         run: |
-          echo "=== Finding Rust/Cargo location ==="
-          find /usr -name "cargo" 2>/dev/null || echo "cargo not found in /usr"
-          find /home -name "cargo" 2>/dev/null || echo "cargo not found in /home"
-          find / -name "cargo" -type f 2>/dev/null | head -5 || echo "cargo not found"
-          
-          echo "=== Current PATH ==="
-          echo $PATH
-          
           echo "=== Checking Rust tools ==="
           which rustc && rustc --version || echo "rustc not found"
           which cargo && cargo --version || echo "cargo not found"
           which solana && solana --version || echo "solana not found"
+          echo "=== Environment ready ==="
 
       - name: Build Solana Contract
         working-directory: ./contracts/solana/programs/forge_solana
