@@ -1,7 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Program, BN } from "@coral-xyz/anchor";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import BN from "bn.js";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
@@ -149,7 +150,7 @@ export class ForgeClient {
       console.log('Sending createToken RPC...');
       
       // Convert initialSupply to BN for u64 type
-      const initialSupplyBN = new BN(params.initialSupply.toString());
+      const initialSupplyBN = new BN(Math.floor(params.initialSupply));
       
       // Use Anchor's rpc() method - let it handle everything
       const signature = await program.methods
@@ -194,7 +195,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       // Convert amount to BN for u64 type
-      const amountBN = new BN(Math.floor(amount).toString());
+      const amountBN = new BN(Math.floor(amount));
       
       const tx = await program.methods
         .mintTokens(amountBN)
@@ -223,7 +224,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       // Convert amount to BN for u64 type
-      const amountBN = new BN(Math.floor(amount).toString());
+      const amountBN = new BN(Math.floor(amount));
       
       const tx = await program.methods
         .burnTokens(amountBN)
