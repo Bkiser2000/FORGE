@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY, Keypair } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import * as borsh from "@coral-xyz/borsh";
+import * as crypto from "crypto";
 
 // Pre-loaded IDL to avoid fetching it at runtime (which triggers BN serializer)
 const FORGE_IDL = {
@@ -153,6 +153,28 @@ const getTokenProgramIdString = (): string => {
   return TOKEN_PROGRAM_ID.toString();
 };
 
+// Calculate Anchor discriminator: SHA256("anchor:instruction:{name}").slice(0, 8)
+const getDiscriminatorSync = (name: string): Buffer => {
+  // Use Node.js crypto if available, otherwise this will fail in browser
+  // (We need async version for browser)
+  try {
+    const hash = crypto.createHash('sha256').update(`anchor:instruction:${name}`).digest();
+    return hash.slice(0, 8);
+  } catch {
+    throw new Error("getDiscriminatorSync requires Node.js crypto module");
+  }
+};
+
+// Async version for browser using SubtleCrypto
+const getDiscriminatorAsync = async (name: string): Promise<Buffer> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`anchor:instruction:${name}`);
+  
+  // Use SubtleCrypto (available in browser and Node.js)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  return Buffer.from(hashBuffer).slice(0, 8);
+};
+
 export interface CreateTokenParams {
   name: string;
   symbol: string;
@@ -227,12 +249,8 @@ export class ForgeClient {
       const tokenConfig = Keypair.generate();
       const ownerTokenAccount = Keypair.generate();
 
-      // Manually construct instruction data to avoid Anchor's BN serializer
-      const instructionName = "createToken";
-      const discriminator = Buffer.from([
-        // Anchor discriminator for "createToken" = first 8 bytes of SHA256("anchor:instruction:createToken")
-        0x1e, 0x4d, 0xb3, 0xda, 0xfe, 0x80, 0xa5, 0x44
-      ]);
+      // Calculate discriminator properly
+      const discriminator = await getDiscriminatorAsync("createToken");
 
       // Serialize arguments: name (string), symbol (string), decimals (u8), initialSupply (u64)
       const data = Buffer.alloc(1000);
@@ -315,11 +333,8 @@ export class ForgeClient {
     try {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
-      // Manually construct instruction data
-      const discriminator = Buffer.from([
-        // Anchor discriminator for "mintTokens" = first 8 bytes of SHA256("anchor:instruction:mintTokens")
-        0x7c, 0x67, 0xe0, 0x7e, 0x1a, 0xf5, 0x6f, 0xf5
-      ]);
+      // Calculate discriminator properly
+      const discriminator = await getDiscriminatorAsync("mintTokens");
 
       const data = Buffer.alloc(100);
       let offset = 0;
@@ -369,11 +384,8 @@ export class ForgeClient {
     try {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
-      // Manually construct instruction data
-      const discriminator = Buffer.from([
-        // Anchor discriminator for "burnTokens" = first 8 bytes of SHA256("anchor:instruction:burnTokens")
-        0x3e, 0x9f, 0x18, 0xd5, 0x2c, 0x39, 0xa7, 0x11
-      ]);
+      // Calculate discriminator properly
+      const discriminator = await getDiscriminatorAsync("burnTokens");
 
       const data = Buffer.alloc(100);
       let offset = 0;
