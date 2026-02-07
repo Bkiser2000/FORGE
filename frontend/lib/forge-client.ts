@@ -2,24 +2,14 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import BN from "bn.js";
 
 // Helper to safely create BN for u64 values
-const toBN = (value: number | string) => {
+const toBN = (value: number | string): any => {
   const numValue = typeof value === 'string' ? parseInt(value, 10) : Math.floor(value);
-  try {
-    // Try to get BN from anchor, with proper handling
-    const BN = require('bn.js');
-    return new BN(numValue.toString(), 10);
-  } catch (e) {
-    // Fallback: try anchor.BN
-    try {
-      return new (anchor as any).BN(numValue.toString(), 10);
-    } catch (e2) {
-      // Last resort: return as plain number - let Anchor's serialization handle it
-      console.warn('Could not create BN, passing numeric value directly');
-      return numValue;
-    }
-  }
+  // Create BN instance with proper initialization
+  const bn = new BN(numValue);
+  return bn;
 };
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
