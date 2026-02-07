@@ -257,84 +257,35 @@ export class ForgeClient {
       const tokenConfig = Keypair.generate();
       const ownerTokenAccount = Keypair.generate();
 
-      // Get discriminator with verification logging
-      const discriminator = await getDiscriminatorAsync("createToken");
-      console.log('✓ Discriminator computed:', discriminator.toString('hex'));
+      console.log('Generated keypairs:');
+      console.log('  mint:', mint.publicKey.toString());
+      console.log('  tokenConfig:', tokenConfig.publicKey.toString());
+      console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      // Manually serialize the instruction data
-      const data = Buffer.alloc(1000);
-      let offset = 0;
+      // Use Anchor Program with pre-loaded IDL (now both frontend and on-chain are Anchor 0.29)
+      const program = new Program(FORGE_IDL as any, getProgramId() as any, this.provider as any);
 
-      // Add discriminator (8 bytes)
-      discriminator.copy(data, offset);
-      offset += 8;
-      console.log('After discriminator, offset:', offset);
-
-      // Serialize name (string = 4 bytes length + UTF-8 data)
-      const nameBytes = Buffer.from(params.name, 'utf8');
-      data.writeUInt32LE(nameBytes.length, offset);
-      offset += 4;
-      nameBytes.copy(data, offset);
-      offset += nameBytes.length;
-      console.log(`After name "${params.name}", offset:`, offset);
-
-      // Serialize symbol (string = 4 bytes length + UTF-8 data)
-      const symbolBytes = Buffer.from(params.symbol, 'utf8');
-      data.writeUInt32LE(symbolBytes.length, offset);
-      offset += 4;
-      symbolBytes.copy(data, offset);
-      offset += symbolBytes.length;
-      console.log(`After symbol "${params.symbol}", offset:`, offset);
-
-      // Serialize decimals (u8 = 1 byte)
-      data.writeUInt8(params.decimals, offset);
-      offset += 1;
-      console.log('After decimals, offset:', offset);
-
-      // Serialize initialSupply (u64 = 8 bytes, little endian)
-      data.writeBigUInt64LE(BigInt(Math.floor(params.initialSupply)), offset);
-      offset += 8;
-      console.log('After initialSupply, offset:', offset);
-
-      const finalData = data.slice(0, offset);
-      console.log('Final instruction data (hex):', finalData.toString('hex'));
-
-      const instruction = new TransactionInstruction({
-        keys: [
-          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
-          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
-          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
-          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-          { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-        ],
-        programId: getProgramId(),
-        data: finalData,
-      });
-
-      console.log('Instruction created with program ID:', getProgramId().toString());
-
-      // Create and send transaction
-      const connection = this.getConnection();
-      const recentBlockhash = await connection.getLatestBlockhash();
-      const transaction = new Transaction({
-        recentBlockhash: recentBlockhash.blockhash,
-        feePayer: this.provider.wallet.publicKey,
-      });
-
-      transaction.add(instruction);
+      console.log('Using program.methods for createToken with Anchor 0.29...');
       
-      // Pre-sign with generated keypairs
-      transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
+      const signature = await program.methods
+        .createToken(
+          params.name,
+          params.symbol,
+          params.decimals,
+          new anchor.BN(params.initialSupply)  // Use BN for u64
+        )
+        .accounts({
+          payer: this.provider.wallet.publicKey,
+          tokenConfig: tokenConfig.publicKey,
+          mint: mint.publicKey,
+          ownerTokenAccount: ownerTokenAccount.publicKey,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([mint, tokenConfig, ownerTokenAccount])
+        .rpc();
 
-      // Sign with wallet
-      const signedTx = await this.provider.wallet.signTransaction(transaction);
-
-      console.log('Transaction constructed and signed');
-      console.log('Sending createToken RPC...');
-      const signature = await connection.sendRawTransaction(signedTx.serialize());
-      
       console.log('✓ Transaction sent! Signature:', signature);
       return signature;
     } catch (error) {
