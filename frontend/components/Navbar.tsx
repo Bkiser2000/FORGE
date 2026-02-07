@@ -4,9 +4,11 @@ import React, { useContext, useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import "@solana/wallet-adapter-react-ui/styles.css";
-import { AppBar, Toolbar, Typography, Button, Box, Select, MenuItem } from "@mui/material";
+import { AppBar, Toolbar, Typography, Button, Box, Select, MenuItem, Menu, ListItemIcon, ListItemText } from "@mui/material";
 import { WalletContext } from "@/pages/_app";
 import Image from "next/image";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import LogoutIcon from "@mui/icons-material/Logout";
 
 interface NavbarProps {
   currentPage: "home" | "create" | "dashboard";
@@ -18,18 +20,25 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const { selectedChain, setSelectedChain } = walletContext || {};
   const { connected } = useWallet();
   const [metaMaskAccount, setMetaMaskAccount] = useState<string | null>(null);
+  const [allAccounts, setAllAccounts] = useState<string[]>([]);
   const [isLoadingMetaMask, setIsLoadingMetaMask] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Helper function to get MetaMask provider
+  const getMetaMaskProvider = () => {
+    if (typeof window === 'undefined') return null;
+    return window.ethereum?.isMetaMask ? window.ethereum : 
+           window.ethereum?.providers?.find((p: any) => p.isMetaMask);
+  };
 
   // Check for MetaMask connection on mount and listen for changes
   useEffect(() => {
     const checkMetaMaskConnection = async () => {
-      if (typeof window === 'undefined') return;
-      
-      const provider = window.ethereum?.isMetaMask ? window.ethereum : 
-                      window.ethereum?.providers?.find((p: any) => p.isMetaMask);
-      
+      const provider = getMetaMaskProvider();
       if (!provider) {
         setMetaMaskAccount(null);
+        setAllAccounts([]);
         return;
       }
 
@@ -37,6 +46,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
         const accounts = await provider.request({ method: 'eth_accounts' });
         if (accounts && accounts.length > 0) {
           setMetaMaskAccount(accounts[0]);
+          setAllAccounts(accounts);
+          console.log('MetaMask connected account:', accounts[0]);
         }
       } catch (err) {
         console.error('Error checking MetaMask connection:', err);
@@ -46,47 +57,96 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     checkMetaMaskConnection();
 
     // Listen for account changes
-    if (typeof window !== 'undefined') {
-      const provider = window.ethereum?.isMetaMask ? window.ethereum : 
-                      window.ethereum?.providers?.find((p: any) => p.isMetaMask);
-      
-      if (provider) {
-        provider.on('accountsChanged', (accounts: string[]) => {
-          if (accounts && accounts.length > 0) {
-            setMetaMaskAccount(accounts[0]);
-          } else {
-            setMetaMaskAccount(null);
-          }
-        });
-      }
+    const provider = getMetaMaskProvider();
+    if (provider) {
+      provider.on('accountsChanged', (accounts: string[]) => {
+        console.log('Accounts changed:', accounts);
+        if (accounts && accounts.length > 0) {
+          setMetaMaskAccount(accounts[0]);
+          setAllAccounts(accounts);
+        } else {
+          setMetaMaskAccount(null);
+          setAllAccounts([]);
+        }
+      });
     }
+
+    return () => {
+      if (provider) {
+        provider.removeAllListeners('accountsChanged');
+      }
+    };
   }, []);
 
   const formatWallet = (wallet: string) => {
     return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
   };
 
-  const disconnectMetaMask = () => {
-    setMetaMaskAccount(null);
-  };
+  const connectMetaMask = async () => {
+    const provider = getMetaMaskProvider();
+    if (!provider) {
+      alert('MetaMask is not installed. Please install it to continue.');
+      return;
+    }
 
-  const switchMetaMaskAccount = async () => {
+    setIsLoadingMetaMask(true);
     try {
-      const provider = window.ethereum?.isMetaMask ? window.ethereum : 
-                      window.ethereum?.providers?.find((p: any) => p.isMetaMask);
-      
-      if (!provider) {
-        alert('MetaMask is not installed.');
-        return;
-      }
-
+      console.log('Requesting MetaMask connection...');
       const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      console.log('MetaMask accounts received:', accounts);
       if (accounts && accounts.length > 0) {
         setMetaMaskAccount(accounts[0]);
+        setAllAccounts(accounts);
       }
+    } catch (err: any) {
+      console.error('Error connecting MetaMask:', err);
+      alert(`Connection failed: ${err?.message || 'Unknown error'}`);
+    } finally {
+      setIsLoadingMetaMask(false);
+    }
+  };
+
+  const copyAddress = async () => {
+    if (metaMaskAccount) {
+      try {
+        await navigator.clipboard.writeText(metaMaskAccount);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
+  const switchToAccount = async (account: string) => {
+    const provider = getMetaMaskProvider();
+    if (!provider) return;
+
+    try {
+      // Some MetaMask versions don't support direct account switching
+      // So we request accounts again which allows user to select
+      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      if (accounts && accounts.length > 0) {
+        setMetaMaskAccount(account);
+      }
+      setAnchorEl(null);
     } catch (err) {
       console.error('Error switching account:', err);
     }
+  };
+
+  const disconnectMetaMask = () => {
+    setMetaMaskAccount(null);
+    setAllAccounts([]);
+    setAnchorEl(null);
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
   };
 
   return (
@@ -218,10 +278,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
             </Box>
           ) : (
             // MetaMask wallet button for Cronos
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <>
               {!metaMaskAccount ? (
                 <Button
-                  onClick={switchMetaMaskAccount}
+                  onClick={connectMetaMask}
                   disabled={isLoadingMetaMask}
                   sx={{
                     backgroundColor: '#2563eb',
@@ -247,7 +307,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
               ) : (
                 <>
                   <Button
-                    onClick={switchMetaMaskAccount}
+                    onClick={handleMenuOpen}
                     sx={{
                       backgroundColor: '#10b981',
                       color: 'white',
@@ -266,29 +326,98 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
                   >
                     {formatWallet(metaMaskAccount)}
                   </Button>
-                  <Button
-                    onClick={disconnectMetaMask}
-                    sx={{
-                      backgroundColor: '#ef4444',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '12px',
-                      transition: 'all 0.3s ease',
-                      textTransform: 'none',
-                      '&:hover': {
-                        opacity: 0.9,
+                  
+                  {/* Dropdown Menu */}
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={handleMenuClose}
+                    PaperProps={{
+                      sx: {
+                        backgroundColor: '#1a1f2e',
+                        color: 'white',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255,255,255,0.1)',
                       }
                     }}
                   >
-                    Disconnect
-                  </Button>
+                    {/* Current Account Display */}
+                    <MenuItem disabled sx={{ pointerEvents: 'none' }}>
+                      <Box sx={{ fontSize: '12px', opacity: 0.7 }}>
+                        Connected Account:
+                      </Box>
+                    </MenuItem>
+                    <MenuItem 
+                      sx={{ 
+                        fontSize: '12px',
+                        fontFamily: 'monospace',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      {metaMaskAccount}
+                    </MenuItem>
+
+                    {/* Divider */}
+                    <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', my: 0.5 }} />
+
+                    {/* Copy Address */}
+                    <MenuItem onClick={copyAddress}>
+                      <ListItemIcon sx={{ color: 'white', minWidth: 'auto', mr: 1 }}>
+                        <ContentCopyIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>
+                        {copied ? 'Copied!' : 'Copy Address'}
+                      </ListItemText>
+                    </MenuItem>
+
+                    {/* Switch Account (if multiple accounts) */}
+                    {allAccounts.length > 1 && (
+                      <>
+                        <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', my: 0.5 }} />
+                        <MenuItem disabled sx={{ pointerEvents: 'none' }}>
+                          <Box sx={{ fontSize: '12px', opacity: 0.7 }}>
+                            Switch Account:
+                          </Box>
+                        </MenuItem>
+                        {allAccounts.map((account) => (
+                          <MenuItem
+                            key={account}
+                            onClick={() => switchToAccount(account)}
+                            selected={account === metaMaskAccount}
+                            sx={{
+                              fontSize: '12px',
+                              fontFamily: 'monospace',
+                              backgroundColor: account === metaMaskAccount ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                            }}
+                          >
+                            {formatWallet(account)}
+                          </MenuItem>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Divider */}
+                    <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', my: 0.5 }} />
+
+                    {/* Disconnect */}
+                    <MenuItem 
+                      onClick={disconnectMetaMask}
+                      sx={{
+                        color: '#ef4444',
+                        '&:hover': {
+                          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        }
+                      }}
+                    >
+                      <ListItemIcon sx={{ color: '#ef4444', minWidth: 'auto', mr: 1 }}>
+                        <LogoutIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Disconnect</ListItemText>
+                    </MenuItem>
+                  </Menu>
                 </>
               )}
-            </Box>
+            </>
           )}
         </Box>
       </Toolbar>
