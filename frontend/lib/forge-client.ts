@@ -2,6 +2,13 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { createHash } from "crypto";
+
+// Helper to calculate Anchor discriminator (first 8 bytes of SHA256)
+const getDiscriminator = (name: string): Buffer => {
+  const hash = createHash('sha256').update(`anchor:${name}`).digest();
+  return hash.slice(0, 8);
+};
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
@@ -128,9 +135,9 @@ export class ForgeClient {
       const instructionData = Buffer.alloc(1000);
       let offset = 0;
       
-      // Discriminator (8 bytes) - first 8 bytes of SHA256 hash of "global:createToken"
-      const discriminator = Buffer.from([0xf6, 0x5b, 0xe9, 0x57, 0xf8, 0xa2, 0xcd, 0x5e]);
-      instructionData.write(discriminator.toString('hex'), offset, 8, 'hex');
+      // Discriminator (8 bytes) - SHA256("anchor:createToken")
+      const discriminator = getDiscriminator('createToken');
+      discriminator.copy(instructionData, offset);
       offset += 8;
       
       // String length and value for name
@@ -213,8 +220,8 @@ export class ForgeClient {
       let offset = 0;
       
       // Discriminator for mintTokens
-      const discriminator = Buffer.from([0xef, 0x2e, 0x8d, 0x8c, 0x1f, 0xba, 0xe9, 0x6f]);
-      instructionData.write(discriminator.toString('hex'), offset, 8, 'hex');
+      const discriminator = getDiscriminator('mintTokens');
+      discriminator.copy(instructionData, offset);
       offset += 8;
       
       // Amount (u64)
@@ -267,8 +274,8 @@ export class ForgeClient {
       let offset = 0;
       
       // Discriminator for burnTokens
-      const discriminator = Buffer.from([0x74, 0xee, 0x47, 0x17, 0x79, 0x4d, 0xc7, 0x5c]);
-      instructionData.write(discriminator.toString('hex'), offset, 8, 'hex');
+      const discriminator = getDiscriminator('burnTokens');
+      discriminator.copy(instructionData, offset);
       offset += 8;
       
       // Amount (u64)
