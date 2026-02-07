@@ -13,8 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: solanalabs/solana:v1.18.0
-    env:
-      PATH: /root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
 
@@ -41,6 +39,7 @@ jobs:
 
       - name: Verify Rust Installation
         run: |
+          export PATH="/root/.cargo/bin:$PATH"
           echo "=== Checking Rust tools ==="
           which rustc && rustc --version || echo "rustc not found"
           which cargo && cargo --version || echo "cargo not found"
@@ -50,6 +49,7 @@ jobs:
       - name: Build Solana Contract
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
+          export PATH="/root/.cargo/bin:$PATH"
           echo "=== Current directory ==="
           pwd
           echo "=== Starting Solana contract build ==="
@@ -68,6 +68,7 @@ jobs:
       - name: Verify Build Output
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
+          export PATH="/root/.cargo/bin:$PATH"
           echo "=== Current working directory ==="
           pwd
           
