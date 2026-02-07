@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserProvider } from 'ethers';
 import { CronosTokenClient } from '../lib/cronos-client';
-import { ClientOnly } from './ClientOnly';
 
 interface CronosTokenFormProps {
   onSuccess?: (tokenAddress: string) => void;
 }
 
-const CronosTokenFormContent: React.FC<CronosTokenFormProps> = ({ onSuccess }) => {
+export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
     symbol: '',
@@ -432,11 +431,5 @@ const CronosTokenFormContent: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     </div>
   );
 };
-
-export const CronosTokenForm: React.FC<CronosTokenFormProps> = (props) => (
-  <ClientOnly>
-    <CronosTokenFormContent {...props} />
-  </ClientOnly>
-);
 
 export default CronosTokenForm;

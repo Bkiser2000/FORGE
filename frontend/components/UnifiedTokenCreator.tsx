@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
 import { CreateTokenForm } from './CreateTokenForm';
 import { CronosTokenForm } from './CronosTokenForm';
 import { NetworkSelector } from './NetworkSelector';
+import { ClientOnly } from './ClientOnly';
 
 export const UnifiedTokenCreator: React.FC = () => {
   const [selectedNetwork, setSelectedNetwork] = useState<'solana' | 'cronos'>('solana');
-  const solanaWallet = useWallet();
 
   const handleNetworkChange = (network: 'solana' | 'cronos') => {
     setSelectedNetwork(network);
@@ -40,11 +39,13 @@ export const UnifiedTokenCreator: React.FC = () => {
               <CreateTokenForm onSuccess={handleSolanaTokenCreated} />
             </div>
           ) : (
-            <div className="cronos-creator">
-              <h2>Cronos Token Creation</h2>
-              <p className="network-info">Creating tokens on Cronos testnet</p>
-              <CronosTokenForm onSuccess={handleCronosTokenCreated} />
-            </div>
+            <ClientOnly>
+              <div className="cronos-creator">
+                <h2>Cronos Token Creation</h2>
+                <p className="network-info">Creating tokens on Cronos testnet</p>
+                <CronosTokenForm onSuccess={handleCronosTokenCreated} />
+              </div>
+            </ClientOnly>
           )}
         </div>
 
