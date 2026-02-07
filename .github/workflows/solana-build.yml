@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: solanalabs/solana:v1.18.0
+    env:
+      PATH: /root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
       - uses: actions/checkout@v4
 
@@ -22,6 +24,15 @@ jobs:
           find . -name "Cargo.lock" -delete -print
           echo "=== Verifying removal ==="
           find . -name "Cargo.lock" && echo "ERROR: Cargo.lock still exists" || echo "✓ All Cargo.lock files removed"
+
+      - name: Install Rust
+        run: |
+          echo "=== Installing Rust toolchain ==="
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source $HOME/.cargo/env
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
+          echo "✓ Rust installed"
 
       - name: Install Dependencies
         run: |
