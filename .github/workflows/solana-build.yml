@@ -33,13 +33,17 @@ jobs:
       - name: Install Rust
         run: |
           echo "=== Installing Rust toolchain ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-          echo "✓ Rust installed"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | bash -s -- -y --default-toolchain stable --no-modify-path
+          ls -la /root/.cargo/ || echo "No .cargo directory"
           echo "=== Rust installation complete ==="
 
       - name: Verify Rust Installation
         run: |
-          . /root/.cargo/env
+          if [ -f /root/.cargo/env ]; then
+            . /root/.cargo/env
+          else
+            export PATH="/root/.cargo/bin:/root/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin:$PATH"
+          fi
           echo "=== Checking Rust tools ==="
           which rustc && rustc --version || echo "rustc not found"
           which cargo && cargo --version || echo "cargo not found"
@@ -49,7 +53,11 @@ jobs:
       - name: Build Solana Contract
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
-          . /root/.cargo/env
+          if [ -f /root/.cargo/env ]; then
+            . /root/.cargo/env
+          else
+            export PATH="/root/.cargo/bin:/root/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin:$PATH"
+          fi
           echo "=== Current directory ==="
           pwd
           echo "=== Starting Solana contract build ==="
@@ -68,7 +76,11 @@ jobs:
       - name: Verify Build Output
         working-directory: ./contracts/solana/programs/forge_solana
         run: |
-          . /root/.cargo/env
+          if [ -f /root/.cargo/env ]; then
+            . /root/.cargo/env
+          else
+            export PATH="/root/.cargo/bin:/root/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin:$PATH"
+          fi
           echo "=== Current working directory ==="
           pwd
           
