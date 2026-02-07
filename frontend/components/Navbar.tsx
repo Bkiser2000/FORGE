@@ -66,14 +66,17 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
   };
 
-  const connectMetaMask = async () => {
-    setIsLoadingMetaMask(true);
+  const disconnectMetaMask = () => {
+    setMetaMaskAccount(null);
+  };
+
+  const switchMetaMaskAccount = async () => {
     try {
       const provider = window.ethereum?.isMetaMask ? window.ethereum : 
                       window.ethereum?.providers?.find((p: any) => p.isMetaMask);
       
       if (!provider) {
-        alert('MetaMask is not installed. Please install it to continue.');
+        alert('MetaMask is not installed.');
         return;
       }
 
@@ -82,9 +85,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
         setMetaMaskAccount(accounts[0]);
       }
     } catch (err) {
-      console.error('Error connecting MetaMask:', err);
-    } finally {
-      setIsLoadingMetaMask(false);
+      console.error('Error switching account:', err);
     }
   };
 
@@ -217,30 +218,77 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
             </Box>
           ) : (
             // MetaMask wallet button for Cronos
-            <Button
-              onClick={connectMetaMask}
-              disabled={isLoadingMetaMask}
-              sx={{
-                backgroundColor: metaMaskAccount ? '#10b981' : '#2563eb',
-                color: 'white',
-                fontWeight: 'bold',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: isLoadingMetaMask ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                transition: 'all 0.3s ease',
-                textTransform: 'none',
-                '&:hover': {
-                  opacity: 0.9,
-                },
-                '&:disabled': {
-                  opacity: 0.5,
-                }
-              }}
-            >
-              {isLoadingMetaMask ? 'Connecting...' : metaMaskAccount ? formatWallet(metaMaskAccount) : 'Connect MetaMask'}
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              {!metaMaskAccount ? (
+                <Button
+                  onClick={switchMetaMaskAccount}
+                  disabled={isLoadingMetaMask}
+                  sx={{
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: isLoadingMetaMask ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    transition: 'all 0.3s ease',
+                    textTransform: 'none',
+                    '&:hover': {
+                      opacity: 0.9,
+                    },
+                    '&:disabled': {
+                      opacity: 0.5,
+                    }
+                  }}
+                >
+                  {isLoadingMetaMask ? 'Connecting...' : 'Connect MetaMask'}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    onClick={switchMetaMaskAccount}
+                    sx={{
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      transition: 'all 0.3s ease',
+                      textTransform: 'none',
+                      '&:hover': {
+                        opacity: 0.9,
+                      }
+                    }}
+                  >
+                    {formatWallet(metaMaskAccount)}
+                  </Button>
+                  <Button
+                    onClick={disconnectMetaMask}
+                    sx={{
+                      backgroundColor: '#ef4444',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      transition: 'all 0.3s ease',
+                      textTransform: 'none',
+                      '&:hover': {
+                        opacity: 0.9,
+                      }
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                </>
+              )}
+            </Box>
           )}
         </Box>
       </Toolbar>
