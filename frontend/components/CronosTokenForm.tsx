@@ -27,62 +27,100 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     checkWalletConnection();
   }, []);
 
+  // Detect and use only MetaMask
+  const getMetaMaskProvider = () => {
+    if (typeof window === 'undefined') return null;
+    
+    // Get MetaMask specifically
+    if (window.ethereum?.isMetaMask) {
+      return window.ethereum;
+    }
+    
+    // Check for Ethereum providers array (EIP-6963)
+    if (window.ethereum?.providers?.length > 0) {
+      const metaMask = window.ethereum.providers.find((p: any) => p.isMetaMask);
+      if (metaMask) return metaMask;
+    }
+    
+    return null;
+  };
+
   const checkWalletConnection = async () => {
-    if (typeof window !== 'undefined' && window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({
-          method: 'eth_accounts',
-        });
-        if (accounts && accounts.length > 0) {
-          setAccount(accounts[0]);
-        }
-      } catch (err) {
-        console.error('Error checking wallet connection:', err);
+    const provider = getMetaMaskProvider();
+    if (!provider) {
+      console.log('MetaMask not found');
+      return;
+    }
+    
+    try {
+      const accounts = await provider.request({
+        method: 'eth_accounts',
+      });
+      if (accounts && accounts.length > 0) {
+        console.log('Found connected account:', accounts[0]);
+        setAccount(accounts[0]);
       }
+    } catch (err) {
+      console.error('Error checking wallet connection:', err);
     }
   };
 
   const connectWallet = async () => {
-    if (!window.ethereum) {
-      setError('MetaMask is not installed');
+    const provider = getMetaMaskProvider();
+    if (!provider) {
+      setError('MetaMask is not installed. Please install MetaMask extension.');
       return;
     }
 
     setIsConnecting(true);
     try {
-      const accounts = await window.ethereum.request({
+      const accounts = await provider.request({
         method: 'eth_requestAccounts',
       });
       if (accounts && accounts.length > 0) {
+        console.log('Connected account:', accounts[0]);
         setAccount(accounts[0]);
         setError(null);
+        
+        // Set up account change listener
+        provider.on('accountsChanged', (newAccounts: string[]) => {
+          console.log('Accounts changed:', newAccounts);
+          if (newAccounts.length > 0) {
+            setAccount(newAccounts[0]);
+          } else {
+            setAccount(null);
+          }
+        });
+        
         // Switch to Cronos network after connecting
         await switchToCronosNetwork();
       }
-    } catch (err) {
-      setError('Failed to connect wallet');
-      console.error(err);
+    } catch (err: any) {
+      console.error('Connection error:', err);
+      setError(err?.message || 'Failed to connect wallet');
     } finally {
       setIsConnecting(false);
     }
   };
 
   const switchToCronosNetwork = async () => {
-    if (!window.ethereum) {
+    const provider = getMetaMaskProvider();
+    if (!provider) {
       setError('MetaMask is not installed');
       return;
     }
 
     try {
-      await window.ethereum.request({
+      await provider.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: '0x152' }], // 338 in hex
       });
+      console.log('Switched to Cronos testnet');
     } catch (err: any) {
       if (err.code === 4902) {
         // Network not added, add it
         try {
-          await window.ethereum.request({
+          await provider.request({
             method: 'wallet_addEthereumChain',
             params: [
               {
@@ -94,10 +132,11 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
                   symbol: 'CRO',
                   decimals: 18,
                 },
-                blockExplorerUrls: ['https://cronoscan.com/'],
+                blockExplorerUrls: ['https://testnet.cronoscan.com/'],
               },
             ],
           });
+          console.log('Added and switched to Cronos testnet');
         } catch (addErr) {
           setError('Failed to add Cronos network');
           console.error(addErr);
@@ -138,8 +177,14 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
       // Ensure we're on the correct network
       await switchToCronosNetwork();
 
-      // Get provider and signer
-      const provider = new BrowserProvider(window.ethereum);
+      // Get MetaMask provider specifically
+      const metaMaskProvider = getMetaMaskProvider();
+      if (!metaMaskProvider) {
+        throw new Error('MetaMask provider not found');
+      }
+
+      // Get provider and signer using MetaMask specifically
+      const provider = new BrowserProvider(metaMaskProvider);
       const signer = await provider.getSigner();
       
       console.log('Connected signer address:', await signer.getAddress());
