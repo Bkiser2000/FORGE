@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, Program, BN } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
@@ -237,7 +237,7 @@ export class ForgeClient {
           params.name,
           params.symbol,
           params.decimals,
-          BigInt(Math.floor(params.initialSupply))
+          new BN(Math.floor(params.initialSupply))
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
@@ -271,7 +271,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .mintTokens(BigInt(Math.floor(amount)))
+        .mintTokens(new BN(Math.floor(amount)))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
@@ -296,7 +296,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .burnTokens(BigInt(Math.floor(amount)))
+        .burnTokens(new BN(Math.floor(amount)))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
