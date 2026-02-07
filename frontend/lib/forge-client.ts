@@ -2,7 +2,6 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import * as borsh from "@coral-xyz/borsh";
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
@@ -118,30 +117,6 @@ export class ForgeClient {
       console.log('=== Starting Token Creation ===');
       console.log('Parameters:', params);
 
-      // Get IDL - local first, then on-chain
-      let idl: any = null;
-      try {
-        const response = await fetch('/forge-idl.json', { cache: 'no-cache' });
-        if (response.ok) {
-          idl = await response.json();
-          console.log('✓ IDL loaded from local cache');
-        }
-      } catch {}
-
-      if (!idl) {
-        try {
-          idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
-          console.log('✓ IDL fetched from on-chain');
-        } catch (err) {
-          throw new Error('IDL not found');
-        }
-      }
-
-      if (!idl) throw new Error("IDL is null");
-
-      // Create program
-      const program = new anchor.Program(idl as anchor.Idl, this.provider);
-
       // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
       const tokenConfig = anchor.web3.Keypair.generate();
@@ -228,9 +203,6 @@ export class ForgeClient {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
-      if (!idl) throw new Error("IDL not found");
-
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       // Manually serialize the instruction
@@ -285,9 +257,6 @@ export class ForgeClient {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      const idl = await anchor.Program.fetchIdl(getProgramId(), this.provider);
-      if (!idl) throw new Error("IDL not found");
-
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       // Manually serialize the instruction
