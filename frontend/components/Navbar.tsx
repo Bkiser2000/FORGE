@@ -19,35 +19,68 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const walletContext = useContext(WalletContext);
   const { selectedChain, setSelectedChain } = walletContext || {};
   const { connected } = useWallet();
+  const [isClient, setIsClient] = useState(false);
   const [metaMaskAccount, setMetaMaskAccount] = useState<string | null>(null);
   const [allAccounts, setAllAccounts] = useState<string[]>([]);
   const [isLoadingMetaMask, setIsLoadingMetaMask] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [copied, setCopied] = useState(false);
 
+  // Ensure component only renders on client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Helper function to get MetaMask provider
   const getMetaMaskProvider = () => {
     if (typeof window === 'undefined') return null;
-    return window.ethereum?.isMetaMask ? window.ethereum : 
-           window.ethereum?.providers?.find((p: any) => p.isMetaMask);
+    
+    // First, check if window.ethereum exists and is MetaMask
+    if (window.ethereum) {
+      console.log('window.ethereum exists, isMetaMask:', window.ethereum.isMetaMask);
+      if (window.ethereum.isMetaMask) {
+        return window.ethereum;
+      }
+      
+      // Check providers array
+      if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
+        const metaMask = window.ethereum.providers.find((p: any) => {
+          console.log('Checking provider:', p.isMetaMask);
+          return p?.isMetaMask;
+        });
+        if (metaMask) {
+          console.log('Found MetaMask in providers array');
+          return metaMask;
+        }
+      }
+    }
+    
+    console.log('MetaMask provider not found');
+    return null;
   };
 
   // Check for MetaMask connection on mount and listen for changes
   useEffect(() => {
+    if (!isClient) return;
+
     const checkMetaMaskConnection = async () => {
+      console.log('Checking MetaMask connection...');
       const provider = getMetaMaskProvider();
       if (!provider) {
+        console.log('No MetaMask provider found');
         setMetaMaskAccount(null);
         setAllAccounts([]);
         return;
       }
 
       try {
+        console.log('Requesting eth_accounts...');
         const accounts = await provider.request({ method: 'eth_accounts' });
+        console.log('Accounts returned:', accounts);
         if (accounts && accounts.length > 0) {
+          console.log('Setting account:', accounts[0]);
           setMetaMaskAccount(accounts[0]);
           setAllAccounts(accounts);
-          console.log('MetaMask connected account:', accounts[0]);
         }
       } catch (err) {
         console.error('Error checking MetaMask connection:', err);
@@ -59,8 +92,9 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     // Listen for account changes
     const provider = getMetaMaskProvider();
     if (provider) {
-      provider.on('accountsChanged', (accounts: string[]) => {
-        console.log('Accounts changed:', accounts);
+      console.log('Setting up accountsChanged listener');
+      const handleAccountsChanged = (accounts: string[]) => {
+        console.log('Accounts changed event:', accounts);
         if (accounts && accounts.length > 0) {
           setMetaMaskAccount(accounts[0]);
           setAllAccounts(accounts);
@@ -68,35 +102,44 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
           setMetaMaskAccount(null);
           setAllAccounts([]);
         }
-      });
+      };
+      
+      provider.on('accountsChanged', handleAccountsChanged);
+      
+      return () => {
+        console.log('Removing accountsChanged listener');
+        provider.removeListener('accountsChanged', handleAccountsChanged);
+      };
     }
-
-    return () => {
-      if (provider) {
-        provider.removeAllListeners('accountsChanged');
-      }
-    };
-  }, []);
+  }, [isClient]);
 
   const formatWallet = (wallet: string) => {
     return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
   };
 
   const connectMetaMask = async () => {
+    console.log('Connect MetaMask clicked');
     const provider = getMetaMaskProvider();
+    
     if (!provider) {
+      console.error('MetaMask provider not found');
       alert('MetaMask is not installed. Please install it to continue.');
       return;
     }
 
+    console.log('Found MetaMask provider, requesting connection...');
     setIsLoadingMetaMask(true);
     try {
-      console.log('Requesting MetaMask connection...');
+      console.log('Calling eth_requestAccounts...');
       const accounts = await provider.request({ method: 'eth_requestAccounts' });
-      console.log('MetaMask accounts received:', accounts);
+      console.log('Connection successful. Accounts:', accounts);
+      
       if (accounts && accounts.length > 0) {
+        console.log('Setting account:', accounts[0]);
         setMetaMaskAccount(accounts[0]);
         setAllAccounts(accounts);
+      } else {
+        console.warn('No accounts returned');
       }
     } catch (err: any) {
       console.error('Error connecting MetaMask:', err);
