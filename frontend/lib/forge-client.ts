@@ -257,72 +257,31 @@ export class ForgeClient {
       const tokenConfig = Keypair.generate();
       const ownerTokenAccount = Keypair.generate();
 
-      // Compute discriminator using SubtleCrypto (browser safe)
-      const discriminator = await getDiscriminatorAsync("createToken");
+      // Try using Anchor's program.methods with pre-loaded IDL
+      const program = new Program(FORGE_IDL as any, getProgramId() as any, this.provider as any);
 
-      // Manual Borsh serialization - NO Anchor BN usage
-      const data = Buffer.alloc(2000);
-      let offset = 0;
-
-      // 1. Discriminator (8 bytes)
-      discriminator.copy(data, offset);
-      offset += 8;
-
-      // 2. String: name (4 bytes length prefix + UTF-8 bytes)
-      const nameBytes = Buffer.from(params.name, 'utf8');
-      data.writeUInt32LE(nameBytes.length, offset);
-      offset += 4;
-      nameBytes.copy(data, offset);
-      offset += nameBytes.length;
-
-      // 3. String: symbol (4 bytes length prefix + UTF-8 bytes)
-      const symbolBytes = Buffer.from(params.symbol, 'utf8');
-      data.writeUInt32LE(symbolBytes.length, offset);
-      offset += 4;
-      symbolBytes.copy(data, offset);
-      offset += symbolBytes.length;
-
-      // 4. u8: decimals (1 byte)
-      data.writeUInt8(params.decimals, offset);
-      offset += 1;
-
-      // 5. u64: initialSupply (8 bytes, little endian)
-      const supplyBuf = Buffer.alloc(8);
-      supplyBuf.writeBigUInt64LE(BigInt(Math.floor(params.initialSupply)), 0);
-      supplyBuf.copy(data, offset);
-      offset += 8;
-
-      const finalData = data.slice(0, offset);
-
-      const instruction = new TransactionInstruction({
-        keys: [
-          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
-          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
-          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
-          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-          { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-        ],
-        programId: getProgramId(),
-        data: finalData,
-      });
-
-      // Create and send transaction
-      const connection = this.getConnection();
-      const recentBlockhash = await connection.getLatestBlockhash();
-      const transaction = new Transaction({
-        recentBlockhash: recentBlockhash.blockhash,
-        feePayer: this.provider.wallet.publicKey,
-      });
-
-      transaction.add(instruction);
-      transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
-      const signedTx = await this.provider.wallet.signTransaction(transaction);
-
-      console.log('Sending transaction...');
-      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      console.log('Using Anchor program.methods with pre-loaded IDL...');
       
+      const txBuilder = program.methods
+        .createToken(
+          params.name,
+          params.symbol,
+          params.decimals,
+          params.initialSupply
+        )
+        .accounts({
+          payer: this.provider.wallet.publicKey,
+          tokenConfig: tokenConfig.publicKey,
+          mint: mint.publicKey,
+          ownerTokenAccount: ownerTokenAccount.publicKey,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: SYSVAR_RENT_PUBKEY,
+        })
+        .signers([mint, tokenConfig, ownerTokenAccount]);
+
+      const signature = await txBuilder.rpc();
+
       console.log('✓ Transaction sent! Signature:', signature);
       return signature;
     } catch (error) {
