@@ -178,7 +178,9 @@ const getDiscriminatorAsync = async (name: string): Promise<Buffer> => {
   }
   
   const hashBuffer = await cryptoObj.subtle.digest('SHA-256', data as BufferSource);
-  return Buffer.from(hashBuffer).slice(0, 8);
+  const discriminator = Buffer.from(hashBuffer).slice(0, 8);
+  console.log(`Calculated discriminator for "${name}":`, discriminator.toString('hex'));
+  return discriminator;
 };
 
 export interface CreateTokenParams {
@@ -313,7 +315,9 @@ export class ForgeClient {
       });
 
       transaction.add(instruction);
-      transaction.sign(mint, tokenConfig, ownerTokenAccount);
+      
+      // Pre-sign with generated keypairs
+      transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
 
       // Sign with wallet
       const signedTx = await this.provider.wallet.signTransaction(transaction);
