@@ -3,22 +3,6 @@ import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// Helper to safely create BN for u64 values
-const toBN = (value: number | string): any => {
-  const numValue = typeof value === 'string' ? parseInt(value, 10) : Math.floor(value);
-  try {
-    // Try to get BN from @coral-xyz/anchor
-    const BN = (anchor as any).BN;
-    if (BN) {
-      return new BN(numValue);
-    }
-  } catch (e) {
-    // Continue to next attempt
-  }
-  // If BN not found, throw with helpful error
-  throw new Error(`BN not available. Value: ${numValue}`);
-};
-
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
 // Use string representations directly - avoid creating multiple PublicKey objects
@@ -164,8 +148,8 @@ export class ForgeClient {
 
       console.log('Sending createToken RPC...');
       
-      // Convert initialSupply to BN for u64 type
-      const initialSupplyBN = toBN(params.initialSupply);
+      // Pass initialSupply as plain number - let Anchor handle u64 serialization
+      const initialSupplyNum = Math.floor(params.initialSupply);
       
       // Use Anchor's rpc() method - let it handle everything
       const signature = await program.methods
@@ -173,7 +157,7 @@ export class ForgeClient {
           params.name,
           params.symbol,
           params.decimals,
-          initialSupplyBN
+          initialSupplyNum
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
@@ -209,11 +193,11 @@ export class ForgeClient {
       const program = new anchor.Program(idl as anchor.Idl, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
-      // Convert amount to BN for u64 type
-      const amountBN = toBN(amount);
+      // Pass amount as plain number - let Anchor handle u64 serialization
+      const amountNum = Math.floor(amount);
       
       const tx = await program.methods
-        .mintTokens(amountBN)
+        .mintTokens(amountNum)
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
@@ -238,11 +222,11 @@ export class ForgeClient {
       const program = new anchor.Program(idl as anchor.Idl, this.provider);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
-      // Convert amount to BN for u64 type
-      const amountBN = toBN(amount);
+      // Pass amount as plain number - let Anchor handle u64 serialization
+      const amountNum = Math.floor(amount);
       
       const tx = await program.methods
-        .burnTokens(amountBN)
+        .burnTokens(amountNum)
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
