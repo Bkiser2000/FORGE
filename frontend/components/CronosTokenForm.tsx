@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserProvider } from 'ethers';
 import { CronosTokenClient } from '../lib/cronos-client';
+import ClientOnly from './ClientOnly';
 
 interface CronosTokenFormProps {
   onSuccess?: (tokenAddress: string) => void;
 }
 
-export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) => {
+const CronosTokenFormContent: React.FC<CronosTokenFormProps> = ({ onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
     symbol: '',
@@ -30,10 +31,11 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
   const checkWalletConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
-        const provider = new BrowserProvider(window.ethereum);
-        const accounts = await provider.listAccounts();
-        if (accounts.length > 0) {
-          setAccount(accounts[0].address);
+        const accounts = await window.ethereum.request({
+          method: 'eth_accounts',
+        });
+        if (accounts && accounts.length > 0) {
+          setAccount(accounts[0]);
         }
       } catch (err) {
         console.error('Error checking wallet connection:', err);
@@ -52,8 +54,12 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
       });
-      setAccount(accounts[0]);
-      setError(null);
+      if (accounts && accounts.length > 0) {
+        setAccount(accounts[0]);
+        setError(null);
+        // Switch to Cronos network after connecting
+        await switchToCronosNetwork();
+      }
     } catch (err) {
       setError('Failed to connect wallet');
       console.error(err);
@@ -130,9 +136,16 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     setLoading(true);
 
     try {
+      // Ensure we're on the correct network
+      await switchToCronosNetwork();
+
+      // Get provider and signer
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       
+      console.log('Connected signer address:', await signer.getAddress());
+      console.log('Factory address:', FACTORY_ADDRESS);
+
       const client = new CronosTokenClient(FACTORY_ADDRESS, CRONOS_RPC);
       await client.connectWallet(signer);
 
@@ -144,6 +157,7 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
         maxSupply: formData.maxSupply || undefined,
       });
 
+      console.log('Token created at:', tokenAddress);
       setSuccess(`Token created successfully! Address: ${tokenAddress}`);
       onSuccess?.(tokenAddress);
 
@@ -154,9 +168,10 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
         initialSupply: 1000,
         maxSupply: 0,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating token:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create token');
+      const errorMessage = err?.reason || err?.message || 'Failed to create token';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -417,5 +432,11 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     </div>
   );
 };
+
+export const CronosTokenForm: React.FC<CronosTokenFormProps> = (props) => (
+  <ClientOnly>
+    <CronosTokenFormContent {...props} />
+  </ClientOnly>
+);
 
 export default CronosTokenForm;
