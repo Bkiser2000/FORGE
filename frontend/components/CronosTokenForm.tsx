@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserProvider } from 'ethers';
 import { CronosTokenClient } from '../lib/cronos-client';
-import ClientOnly from './ClientOnly';
+import { ClientOnly } from './ClientOnly';
 
 interface CronosTokenFormProps {
   onSuccess?: (tokenAddress: string) => void;
