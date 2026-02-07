@@ -2,7 +2,13 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import BN from "bn.js";
+
+// Helper to convert numbers to BN-compatible format
+const toBN = (value: number | string) => {
+  const numValue = typeof value === 'string' ? parseInt(value, 10) : Math.floor(value);
+  // Create BN using anchor's internal bn which is more reliable
+  return new (anchor as any).BN(numValue.toString(), 10);
+};
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
@@ -150,7 +156,7 @@ export class ForgeClient {
       console.log('Sending createToken RPC...');
       
       // Convert initialSupply to BN for u64 type
-      const initialSupplyBN = new BN(Math.floor(params.initialSupply));
+      const initialSupplyBN = toBN(params.initialSupply);
       
       // Use Anchor's rpc() method - let it handle everything
       const signature = await program.methods
@@ -195,7 +201,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       // Convert amount to BN for u64 type
-      const amountBN = new BN(Math.floor(amount));
+      const amountBN = toBN(amount);
       
       const tx = await program.methods
         .mintTokens(amountBN)
@@ -224,7 +230,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       // Convert amount to BN for u64 type
-      const amountBN = new BN(Math.floor(amount));
+      const amountBN = toBN(amount);
       
       const tx = await program.methods
         .burnTokens(amountBN)
