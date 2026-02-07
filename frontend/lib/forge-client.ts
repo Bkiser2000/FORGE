@@ -3,11 +3,23 @@ import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
-// Helper to convert numbers to BN-compatible format
+// Helper to safely create BN for u64 values
 const toBN = (value: number | string) => {
   const numValue = typeof value === 'string' ? parseInt(value, 10) : Math.floor(value);
-  // Create BN using anchor's internal bn which is more reliable
-  return new (anchor as any).BN(numValue.toString(), 10);
+  try {
+    // Try to get BN from anchor, with proper handling
+    const BN = require('bn.js');
+    return new BN(numValue.toString(), 10);
+  } catch (e) {
+    // Fallback: try anchor.BN
+    try {
+      return new (anchor as any).BN(numValue.toString(), 10);
+    } catch (e2) {
+      // Last resort: return as plain number - let Anchor's serialization handle it
+      console.warn('Could not create BN, passing numeric value directly');
+      return numValue;
+    }
+  }
 };
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
