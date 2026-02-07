@@ -25,25 +25,16 @@ jobs:
           echo "=== Verifying removal ==="
           find . -name "Cargo.lock" && echo "ERROR: Cargo.lock still exists" || echo "✓ All Cargo.lock files removed"
 
-      - name: Install Rust
-        run: |
-          echo "=== Installing Rust toolchain ==="
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source $HOME/.cargo/env
-          rustup default stable
-          rustup target add wasm32-unknown-unknown
-          echo "✓ Rust installed"
-
       - name: Install Dependencies
         run: |
           echo "=== Installing dependencies ==="
           apt-get update
-          apt-get install -y curl build-essential pkg-config
+          apt-get install -y build-essential pkg-config
           echo "✓ Dependencies installed"
 
-      - name: Check Environment
+      - name: Verify Rust Installation
         run: |
-          echo "=== Checking installed tools ==="
+          echo "=== Checking Rust in PATH ==="
           which rustc && rustc --version || echo "rustc not found"
           which cargo && cargo --version || echo "cargo not found"
           which solana && solana --version || echo "solana not found"
