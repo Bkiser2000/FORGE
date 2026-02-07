@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { BrowserProvider, Contract, parseUnits, toBeHex } from 'ethers';
 
 // Contract ABIs
 const TOKEN_FACTORY_ABI = [
@@ -41,25 +41,25 @@ export interface CronosToken {
 }
 
 export class CronosTokenClient {
-  private provider: ethers.providers.JsonRpcProvider;
-  private signer: ethers.Signer | null = null;
+  private provider: BrowserProvider;
+  private signer: any = null;
   private factoryAddress: string;
-  private factoryContract: ethers.Contract | null = null;
+  private factoryContract: Contract | null = null;
 
   constructor(
     factoryAddress: string,
     rpcUrl: string = 'https://evm-t0.cronos.org'
   ) {
     this.factoryAddress = factoryAddress;
-    this.provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+    this.provider = new BrowserProvider(window.ethereum);
   }
 
   /**
    * Connect with a signer (wallet)
    */
-  async connectWallet(signer: ethers.Signer): Promise<void> {
+  async connectWallet(signer: any): Promise<void> {
     this.signer = signer;
-    this.factoryContract = new ethers.Contract(
+    this.factoryContract = new Contract(
       this.factoryAddress,
       TOKEN_FACTORY_ABI,
       signer
@@ -80,8 +80,8 @@ export class CronosTokenClient {
       const tx = await this.factoryContract.createToken(
         params.name,
         params.symbol,
-        ethers.utils.parseUnits(params.initialSupply.toString(), 18),
-        params.maxSupply ? ethers.utils.parseUnits(params.maxSupply.toString(), 18) : 0
+        parseUnits(params.initialSupply.toString(), 18),
+        params.maxSupply ? parseUnits(params.maxSupply.toString(), 18) : 0
       );
 
       console.log('Transaction sent:', tx.hash);
@@ -90,14 +90,20 @@ export class CronosTokenClient {
       console.log('Transaction confirmed:', receipt);
 
       // Extract token address from logs
-      const event = receipt.events?.find((e: any) => e.event === 'TokenDeployed');
+      const event = receipt?.logs?.find((log: any) => {
+        try {
+          const iface = this.factoryContract?.interface;
+          return iface?.parseLog(log)?.name === 'TokenDeployed';
+        } catch {
+          return false;
+        }
+      });
+
       if (event) {
-        const tokenAddress = event.args.tokenAddress;
-        console.log('Token created at:', tokenAddress);
-        return tokenAddress;
+        return event.args?.[0] || receipt?.transactionHash || '';
       }
 
-      return receipt.transactionHash;
+      return receipt?.transactionHash || '';
     } catch (error) {
       console.error('Error creating token:', error);
       throw error;
@@ -109,7 +115,7 @@ export class CronosTokenClient {
    */
   async getCreatorTokens(creatorAddress: string): Promise<CronosToken[]> {
     try {
-      const factoryRead = new ethers.Contract(
+      const factoryRead = new Contract(
         this.factoryAddress,
         TOKEN_FACTORY_ABI,
         this.provider
@@ -135,7 +141,7 @@ export class CronosTokenClient {
    */
   async getTokenInfo(tokenAddress: string, creator: string): Promise<CronosToken> {
     try {
-      const tokenContract = new ethers.Contract(
+      const tokenContract = new Contract(
         tokenAddress,
         FORGE_TOKEN_ABI,
         this.provider
@@ -166,12 +172,12 @@ export class CronosTokenClient {
    * Mint tokens
    */
   async mintTokens(tokenAddress: string, toAddress: string, amount: number): Promise<string> {
-    if (!this.factoryContract) {
+    if (!this.signer) {
       throw new Error('Wallet not connected. Call connectWallet first.');
     }
 
     try {
-      const tokenContract = new ethers.Contract(
+      const tokenContract = new Contract(
         tokenAddress,
         FORGE_TOKEN_ABI,
         this.signer
@@ -179,11 +185,11 @@ export class CronosTokenClient {
 
       const tx = await tokenContract.mint(
         toAddress,
-        ethers.utils.parseUnits(amount.toString(), 18)
+        parseUnits(amount.toString(), 18)
       );
 
       const receipt = await tx.wait(1);
-      return receipt.transactionHash;
+      return receipt?.transactionHash || '';
     } catch (error) {
       console.error('Error minting tokens:', error);
       throw error;
@@ -199,18 +205,18 @@ export class CronosTokenClient {
     }
 
     try {
-      const tokenContract = new ethers.Contract(
+      const tokenContract = new Contract(
         tokenAddress,
         FORGE_TOKEN_ABI,
         this.signer
       );
 
       const tx = await tokenContract.burn(
-        ethers.utils.parseUnits(amount.toString(), 18)
+        parseUnits(amount.toString(), 18)
       );
 
       const receipt = await tx.wait(1);
-      return receipt.transactionHash;
+      return receipt?.transactionHash || '';
     } catch (error) {
       console.error('Error burning tokens:', error);
       throw error;
@@ -222,14 +228,14 @@ export class CronosTokenClient {
    */
   async getTokenCount(): Promise<number> {
     try {
-      const factoryRead = new ethers.Contract(
+      const factoryRead = new Contract(
         this.factoryAddress,
         TOKEN_FACTORY_ABI,
         this.provider
       );
 
       const count = await factoryRead.getTokenCount();
-      return count.toNumber();
+      return Number(count);
     } catch (error) {
       console.error('Error fetching token count:', error);
       throw error;

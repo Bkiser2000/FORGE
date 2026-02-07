@@ -129,23 +129,4 @@ contract ForgeToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
     ) internal override(ERC20, ERC20Pausable) whenNotPaused {
         super._beforeTokenTransfer(from, to, amount);
     }
-
-    function _update(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override(ERC20) {
-        super._update(from, to, amount);
-    }
-
-    function _mint(address to, uint256 amount) internal override(ERC20) {
-        super._mint(to, amount);
-    }
-
-    function _burn(address account, uint256 amount)
-        internal
-        override(ERC20)
-    {
-        super._burn(account, amount);
-    }
 }

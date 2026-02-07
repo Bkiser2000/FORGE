@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
+import { BrowserProvider } from 'ethers';
 import { CronosTokenClient } from '../lib/cronos-client';
 
 interface CronosTokenFormProps {
@@ -30,10 +30,10 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
   const checkWalletConnection = async () => {
     if (typeof window !== 'undefined' && window.ethereum) {
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const provider = new BrowserProvider(window.ethereum);
         const accounts = await provider.listAccounts();
         if (accounts.length > 0) {
-          setAccount(accounts[0]);
+          setAccount(accounts[0].address);
         }
       } catch (err) {
         console.error('Error checking wallet connection:', err);
@@ -130,8 +130,8 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     setLoading(true);
 
     try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
       
       const client = new CronosTokenClient(FACTORY_ADDRESS, CRONOS_RPC);
       await client.connectWallet(signer);
@@ -203,7 +203,7 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
                 placeholder="e.g., MYT"
                 value={formData.symbol}
                 onChange={handleInputChange}
-                maxLength="10"
+                maxLength={10}
                 required
               />
             </div>

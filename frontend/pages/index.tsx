@@ -31,9 +31,6 @@ const Home = () => {
               <UnifiedTokenCreator />
             </div>
           )}
-              <TokenCreator />
-            </div>
-          )}
           {currentPage === "dashboard" && <Dashboard />}
         </div>
       </main>
