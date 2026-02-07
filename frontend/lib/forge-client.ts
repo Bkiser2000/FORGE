@@ -8,7 +8,7 @@ const FORGE_IDL = {
   "version": "0.1.0",
   "name": "forge_solana",
   "metadata": {
-    "address": "DkkU1jrPLiK2uEnJTBicEijdyyttr2rXHQWCijtRRgUz"
+    "address": "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF"
   },
   "instructions": [
     {
@@ -110,7 +110,7 @@ const FORGE_IDL = {
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
 // Use string representations directly - avoid creating multiple PublicKey objects
-const PROGRAM_ID_STRING = "DkkU1jrPLiK2uEnJTBicEijdyyttr2rXHQWCijtRRgUz";
+const PROGRAM_ID_STRING = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF";
 
 // Cache ONLY the program ID (which we need first)
 // TOKEN_PROGRAM_ID is imported from @solana/spl-token
