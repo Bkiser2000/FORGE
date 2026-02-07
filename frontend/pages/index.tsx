@@ -2,7 +2,7 @@ import Head from "next/head";
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
-import TokenCreator from "@/components/TokenCreator";
+import UnifiedTokenCreator from "@/components/UnifiedTokenCreator";
 import Dashboard from "@/components/Dashboard";
 
 type Page = "home" | "create" | "dashboard";
@@ -28,6 +28,9 @@ const Home = () => {
           )}
           {currentPage === "create" && (
             <div>
+              <UnifiedTokenCreator />
+            </div>
+          )}
               <TokenCreator />
             </div>
           )}
