@@ -2,13 +2,54 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { createHash } from "crypto";
 
-// Helper to calculate Anchor discriminator (first 8 bytes of SHA256)
-const getDiscriminator = (name: string): Buffer => {
-  const hash = createHash('sha256').update(`anchor:${name}`).digest();
-  return hash.slice(0, 8);
-};
+// Pre-loaded IDL to avoid fetching it at runtime (which triggers BN serializer)
+const FORGE_IDL = {
+  "version": "0.1.0",
+  "name": "forge_solana",
+  "instructions": [
+    {
+      "name": "createToken",
+      "accounts": [
+        { "name": "payer", "isMut": true, "isSigner": true },
+        { "name": "tokenConfig", "isMut": true, "isSigner": true },
+        { "name": "mint", "isMut": true, "isSigner": true },
+        { "name": "ownerTokenAccount", "isMut": true, "isSigner": true },
+        { "name": "systemProgram", "isMut": false, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false },
+        { "name": "rent", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "name", "type": "string" },
+        { "name": "symbol", "type": "string" },
+        { "name": "decimals", "type": "u8" },
+        { "name": "initialSupply", "type": "u64" }
+      ]
+    },
+    {
+      "name": "mintTokens",
+      "accounts": [
+        { "name": "payer", "isMut": true, "isSigner": true },
+        { "name": "tokenConfig", "isMut": true, "isSigner": false },
+        { "name": "mint", "isMut": true, "isSigner": false },
+        { "name": "tokenAccount", "isMut": true, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [{ "name": "amount", "type": "u64" }]
+    },
+    {
+      "name": "burnTokens",
+      "accounts": [
+        { "name": "payer", "isMut": true, "isSigner": true },
+        { "name": "tokenConfig", "isMut": true, "isSigner": false },
+        { "name": "mint", "isMut": true, "isSigner": false },
+        { "name": "tokenAccount", "isMut": true, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [{ "name": "amount", "type": "u64" }]
+    }
+  ]
+} as any;
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
@@ -124,6 +165,9 @@ export class ForgeClient {
       console.log('=== Starting Token Creation ===');
       console.log('Parameters:', params);
 
+      // Create program using pre-loaded IDL (avoids BN serializer in IDL fetch)
+      const program = new anchor.Program(FORGE_IDL as any, getProgramId() as any, this.provider as any);
+
       // Generate keypairs
       const mint = anchor.web3.Keypair.generate();
       const tokenConfig = anchor.web3.Keypair.generate();
@@ -131,71 +175,25 @@ export class ForgeClient {
 
       console.log('Sending createToken RPC...');
       
-      // Manually serialize the instruction to avoid BN issues
-      const instructionData = Buffer.alloc(1000);
-      let offset = 0;
-      
-      // Discriminator (8 bytes) - SHA256("anchor:createToken")
-      const discriminator = getDiscriminator('createToken');
-      discriminator.copy(instructionData, offset);
-      offset += 8;
-      
-      // String length and value for name
-      instructionData.writeUInt32LE(params.name.length, offset);
-      offset += 4;
-      instructionData.write(params.name, offset);
-      offset += params.name.length;
-      
-      // String length and value for symbol
-      instructionData.writeUInt32LE(params.symbol.length, offset);
-      offset += 4;
-      instructionData.write(params.symbol, offset);
-      offset += params.symbol.length;
-      
-      // Decimals (u8)
-      instructionData.writeUInt8(params.decimals, offset);
-      offset += 1;
-      
-      // Initial supply (u64)
-      instructionData.writeBigUInt64LE(BigInt(Math.floor(params.initialSupply)), offset);
-      offset += 8;
-      
-      const finalData = instructionData.slice(0, offset);
-      
-      const instruction = new TransactionInstruction({
-        keys: [
-          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
-          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
-          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
-          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-          { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-        ],
-        programId: getProgramId(),
-        data: finalData,
-      });
-      
-      const recentBlockhash = await this.getConnection().getLatestBlockhash();
-      const transaction = new Transaction({
-        recentBlockhash: recentBlockhash.blockhash,
-        feePayer: this.provider.wallet.publicKey,
-      });
-      transaction.add(instruction);
-      
-      // Sign with the generated keypairs first
-      transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
-      
-      // Then sign with wallet
-      const signed = await this.provider.wallet.signTransaction(transaction);
-      
-      // Send and confirm
-      const signature = await this.getConnection().sendRawTransaction(signed.serialize(), {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed'
-      });
-      
-      await this.getConnection().confirmTransaction(signature, 'confirmed');
+      // Use program.methods - now safe since we're not fetching IDL
+      const signature = await program.methods
+        .createToken(
+          params.name,
+          params.symbol,
+          params.decimals,
+          new anchor.BN(Math.floor(params.initialSupply))
+        )
+        .accounts({
+          payer: this.provider.wallet.publicKey,
+          tokenConfig: tokenConfig.publicKey,
+          mint: mint.publicKey,
+          ownerTokenAccount: ownerTokenAccount.publicKey,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+        })
+        .signers([mint, tokenConfig, ownerTokenAccount])
+        .rpc();
 
       console.log('✓ Transaction sent! Signature:', signature);
       return signature;
@@ -213,49 +211,20 @@ export class ForgeClient {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
+      const program = new anchor.Program(FORGE_IDL as any, getProgramId() as any, this.provider as any);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
-      // Manually serialize the instruction
-      const instructionData = Buffer.alloc(100);
-      let offset = 0;
-      
-      // Discriminator for mintTokens
-      const discriminator = getDiscriminator('mintTokens');
-      discriminator.copy(instructionData, offset);
-      offset += 8;
-      
-      // Amount (u64)
-      instructionData.writeBigUInt64LE(BigInt(Math.floor(amount)), offset);
-      offset += 8;
-      
-      const finalData = instructionData.slice(0, offset);
-      
-      const instruction = new TransactionInstruction({
-        keys: [
-          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
-          { pubkey: tokenConfigKey, isSigner: false, isWritable: true },
-          { pubkey: this.provider.wallet.publicKey, isSigner: false, isWritable: true }, // mint
-          { pubkey: this.provider.wallet.publicKey, isSigner: false, isWritable: true }, // token account
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-        ],
-        programId: getProgramId(),
-        data: finalData,
-      });
-      
-      const recentBlockhash = await this.getConnection().getLatestBlockhash();
-      const transaction = new Transaction({
-        recentBlockhash: recentBlockhash.blockhash,
-        feePayer: this.provider.wallet.publicKey,
-      });
-      transaction.add(instruction);
-      
-      const signed = await this.provider.wallet.signTransaction(transaction);
-      const tx = await this.getConnection().sendRawTransaction(signed.serialize(), {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed'
-      });
-      
-      await this.getConnection().confirmTransaction(tx, 'confirmed');
+      const tx = await program.methods
+        .mintTokens(new anchor.BN(Math.floor(amount)))
+        .accounts({
+          payer: this.provider.wallet.publicKey,
+          tokenConfig: tokenConfigKey,
+          mint: this.provider.wallet.publicKey,
+          tokenAccount: this.provider.wallet.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .rpc();
+
       return tx;
     } catch (error) {
       console.error("Error minting tokens:", error);
@@ -267,59 +236,24 @@ export class ForgeClient {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
+      const program = new anchor.Program(FORGE_IDL as any, getProgramId() as any, this.provider as any);
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
-      // Manually serialize the instruction
-      const instructionData = Buffer.alloc(100);
-      let offset = 0;
-      
-      // Discriminator for burnTokens
-      const discriminator = getDiscriminator('burnTokens');
-      discriminator.copy(instructionData, offset);
-      offset += 8;
-      
-      // Amount (u64)
-      instructionData.writeBigUInt64LE(BigInt(Math.floor(amount)), offset);
-      offset += 8;
-      
-      const finalData = instructionData.slice(0, offset);
-      
-      const instruction = new TransactionInstruction({
-        keys: [
-          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
-          { pubkey: tokenConfigKey, isSigner: false, isWritable: true },
-          { pubkey: this.provider.wallet.publicKey, isSigner: false, isWritable: true }, // mint
-          { pubkey: this.provider.wallet.publicKey, isSigner: false, isWritable: true }, // token account
-          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-        ],
-        programId: getProgramId(),
-        data: finalData,
-      });
-      
-      const recentBlockhash = await this.getConnection().getLatestBlockhash();
-      const transaction = new Transaction({
-        recentBlockhash: recentBlockhash.blockhash,
-        feePayer: this.provider.wallet.publicKey,
-      });
-      transaction.add(instruction);
-      
-      const signed = await this.provider.wallet.signTransaction(transaction);
-      const tx = await this.getConnection().sendRawTransaction(signed.serialize(), {
-        skipPreflight: false,
-        preflightCommitment: 'confirmed'
-      });
-      
-      await this.getConnection().confirmTransaction(tx, 'confirmed');
+      const tx = await program.methods
+        .burnTokens(new anchor.BN(Math.floor(amount)))
+        .accounts({
+          payer: this.provider.wallet.publicKey,
+          tokenConfig: tokenConfigKey,
+          mint: this.provider.wallet.publicKey,
+          tokenAccount: this.provider.wallet.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .rpc();
+
       return tx;
     } catch (error) {
       console.error("Error burning tokens:", error);
       throw error;
     }
   }
-
-  getProgramId(): PublicKey {
-    return getProgramId();
-  }
 }
-
-export default ForgeClient;
