@@ -176,7 +176,10 @@ export class ForgeClient {
       });
       transaction.add(instruction);
       
-      // Sign transaction
+      // Sign with the generated keypairs first
+      transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
+      
+      // Then sign with wallet
       const signed = await this.provider.wallet.signTransaction(transaction);
       
       // Send and confirm
