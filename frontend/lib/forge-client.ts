@@ -257,35 +257,72 @@ export class ForgeClient {
       const tokenConfig = Keypair.generate();
       const ownerTokenAccount = Keypair.generate();
 
-      console.log('Generated keypairs:');
-      console.log('  mint:', mint.publicKey.toString());
-      console.log('  tokenConfig:', tokenConfig.publicKey.toString());
-      console.log('  ownerTokenAccount:', ownerTokenAccount.publicKey.toString());
+      // Compute discriminator using SubtleCrypto (browser safe)
+      const discriminator = await getDiscriminatorAsync("createToken");
 
-      // Use Anchor Program with pre-loaded IDL (now both frontend and on-chain are Anchor 0.29)
-      const program = new Program(FORGE_IDL as any, getProgramId() as any, this.provider as any);
+      // Manual Borsh serialization - NO Anchor BN usage
+      const data = Buffer.alloc(2000);
+      let offset = 0;
 
-      console.log('Using program.methods for createToken with Anchor 0.29...');
+      // 1. Discriminator (8 bytes)
+      discriminator.copy(data, offset);
+      offset += 8;
+
+      // 2. String: name (4 bytes length prefix + UTF-8 bytes)
+      const nameBytes = Buffer.from(params.name, 'utf8');
+      data.writeUInt32LE(nameBytes.length, offset);
+      offset += 4;
+      nameBytes.copy(data, offset);
+      offset += nameBytes.length;
+
+      // 3. String: symbol (4 bytes length prefix + UTF-8 bytes)
+      const symbolBytes = Buffer.from(params.symbol, 'utf8');
+      data.writeUInt32LE(symbolBytes.length, offset);
+      offset += 4;
+      symbolBytes.copy(data, offset);
+      offset += symbolBytes.length;
+
+      // 4. u8: decimals (1 byte)
+      data.writeUInt8(params.decimals, offset);
+      offset += 1;
+
+      // 5. u64: initialSupply (8 bytes, little endian)
+      const supplyBuf = Buffer.alloc(8);
+      supplyBuf.writeBigUInt64LE(BigInt(Math.floor(params.initialSupply)), 0);
+      supplyBuf.copy(data, offset);
+      offset += 8;
+
+      const finalData = data.slice(0, offset);
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
+          { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
+          { pubkey: mint.publicKey, isSigner: true, isWritable: true },
+          { pubkey: ownerTokenAccount.publicKey, isSigner: true, isWritable: true },
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+          { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+        ],
+        programId: getProgramId(),
+        data: finalData,
+      });
+
+      // Create and send transaction
+      const connection = this.getConnection();
+      const recentBlockhash = await connection.getLatestBlockhash();
+      const transaction = new Transaction({
+        recentBlockhash: recentBlockhash.blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+
+      transaction.add(instruction);
+      transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+
+      console.log('Sending transaction...');
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
       
-      const signature = await program.methods
-        .createToken(
-          params.name,
-          params.symbol,
-          params.decimals,
-          params.initialSupply  // Just pass the number, let Anchor convert to u64
-        )
-        .accounts({
-          payer: this.provider.wallet.publicKey,
-          tokenConfig: tokenConfig.publicKey,
-          mint: mint.publicKey,
-          ownerTokenAccount: ownerTokenAccount.publicKey,
-          systemProgram: SystemProgram.programId,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          rent: SYSVAR_RENT_PUBKEY,
-        })
-        .signers([mint, tokenConfig, ownerTokenAccount])
-        .rpc();
-
       console.log('✓ Transaction sent! Signature:', signature);
       return signature;
     } catch (error) {
@@ -304,22 +341,43 @@ export class ForgeClient {
 
     try {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
-      const program = new Program(FORGE_IDL as any, getProgramId() as any, this.provider as any);
+      const discriminator = await getDiscriminatorAsync("mintTokens");
 
-      console.log('Calling program.methods.mintTokens...');
-      
-      // We need to find the mint and token account from the tokenConfig
-      // For now, use placeholder addresses - these would normally be fetched
-      const signature = await program.methods
-        .mintTokens(amount)
-        .accounts({
-          payer: this.provider.wallet.publicKey,
-          tokenConfig: tokenConfigKey,
-          mint: this.provider.wallet.publicKey,
-          tokenAccount: this.provider.wallet.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc();
+      const data = Buffer.alloc(100);
+      let offset = 0;
+
+      discriminator.copy(data, offset);
+      offset += 8;
+
+      const amountBuf = Buffer.alloc(8);
+      amountBuf.writeBigUInt64LE(BigInt(Math.floor(amount)), 0);
+      amountBuf.copy(data, offset);
+      offset += 8;
+
+      const finalData = data.slice(0, offset);
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
+          { pubkey: tokenConfigKey, isSigner: false, isWritable: true },
+          { pubkey: this.provider.wallet.publicKey, isSigner: false, isWritable: true },
+          { pubkey: this.provider.wallet.publicKey, isSigner: false, isWritable: true },
+          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        ],
+        programId: getProgramId(),
+        data: finalData,
+      });
+
+      const connection = this.getConnection();
+      const recentBlockhash = await connection.getLatestBlockhash();
+      const transaction = new Transaction({
+        recentBlockhash: recentBlockhash.blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+
+      transaction.add(instruction);
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
 
       console.log('✓ Mint transaction sent! Signature:', signature);
       return signature;
@@ -334,22 +392,43 @@ export class ForgeClient {
 
     try {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
-      const program = new Program(FORGE_IDL as any, getProgramId() as any, this.provider as any);
+      const discriminator = await getDiscriminatorAsync("burnTokens");
 
-      console.log('Calling program.methods.burnTokens...');
-      
-      // We need to find the mint and token account from the tokenConfig
-      // For now, use placeholder addresses - these would normally be fetched
-      const signature = await program.methods
-        .burnTokens(amount)
-        .accounts({
-          payer: this.provider.wallet.publicKey,
-          tokenConfig: tokenConfigKey,
-          mint: this.provider.wallet.publicKey,
-          tokenAccount: this.provider.wallet.publicKey,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc();
+      const data = Buffer.alloc(100);
+      let offset = 0;
+
+      discriminator.copy(data, offset);
+      offset += 8;
+
+      const amountBuf = Buffer.alloc(8);
+      amountBuf.writeBigUInt64LE(BigInt(Math.floor(amount)), 0);
+      amountBuf.copy(data, offset);
+      offset += 8;
+
+      const finalData = data.slice(0, offset);
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
+          { pubkey: tokenConfigKey, isSigner: false, isWritable: true },
+          { pubkey: this.provider.wallet.publicKey, isSigner: false, isWritable: true },
+          { pubkey: this.provider.wallet.publicKey, isSigner: false, isWritable: true },
+          { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+        ],
+        programId: getProgramId(),
+        data: finalData,
+      });
+
+      const connection = this.getConnection();
+      const recentBlockhash = await connection.getLatestBlockhash();
+      const transaction = new Transaction({
+        recentBlockhash: recentBlockhash.blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+
+      transaction.add(instruction);
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
 
       console.log('✓ Burn transaction sent! Signature:', signature);
       return signature;
