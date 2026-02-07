@@ -12,7 +12,7 @@ const FORGE_IDL = {
   },
   "instructions": [
     {
-      "name": "create_token",
+      "name": "createToken",
       "accounts": [
         { "name": "payer", "isMut": true, "isSigner": true },
         { "name": "tokenConfig", "isMut": true, "isSigner": true },
@@ -30,7 +30,7 @@ const FORGE_IDL = {
       ]
     },
     {
-      "name": "mint_tokens",
+      "name": "mintTokens",
       "accounts": [
         { "name": "payer", "isMut": true, "isSigner": true },
         { "name": "tokenConfig", "isMut": true, "isSigner": false },
@@ -41,7 +41,7 @@ const FORGE_IDL = {
       "args": [{ "name": "amount", "type": "u64" }]
     },
     {
-      "name": "burn_tokens",
+      "name": "burnTokens",
       "accounts": [
         { "name": "payer", "isMut": true, "isSigner": true },
         { "name": "tokenConfig", "isMut": true, "isSigner": false },
@@ -258,7 +258,7 @@ export class ForgeClient {
       const ownerTokenAccount = Keypair.generate();
 
       // Compute discriminator using SubtleCrypto (browser safe, no BN)
-      const discriminator = await getDiscriminatorAsync("create_token");
+      const discriminator = await getDiscriminatorAsync("createToken");
 
       // Manual Borsh serialization - NO Anchor BN usage
       const data = Buffer.alloc(2000);
@@ -341,7 +341,7 @@ export class ForgeClient {
 
     try {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
-      const discriminator = await getDiscriminatorAsync("mint_tokens");
+      const discriminator = await getDiscriminatorAsync("mintTokens");
 
       const data = Buffer.alloc(100);
       let offset = 0;
@@ -392,7 +392,7 @@ export class ForgeClient {
 
     try {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
-      const discriminator = await getDiscriminatorAsync("burn_tokens");
+      const discriminator = await getDiscriminatorAsync("burnTokens");
 
       const data = Buffer.alloc(100);
       let offset = 0;
