@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, MintTo, TokenAccount};
 
-declare_id!("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+declare_id!("DkkU1jrPLiK2uEnJTBicEijdyyttr2rXHQWCijtRRgUz");
 
 #[program]
 pub mod forge_solana {
