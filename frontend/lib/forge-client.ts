@@ -181,7 +181,7 @@ export class ForgeClient {
           params.name,
           params.symbol,
           params.decimals,
-          new anchor.BN(Math.floor(params.initialSupply))
+          BigInt(Math.floor(params.initialSupply))
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
@@ -215,7 +215,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .mintTokens(new anchor.BN(Math.floor(amount)))
+        .mintTokens(BigInt(Math.floor(amount)))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
@@ -240,7 +240,7 @@ export class ForgeClient {
       const tokenConfigKey = new PublicKey(tokenConfigPubkey);
 
       const tx = await program.methods
-        .burnTokens(new anchor.BN(Math.floor(amount)))
+        .burnTokens(BigInt(Math.floor(amount)))
         .accounts({
           payer: this.provider.wallet.publicKey,
           tokenConfig: tokenConfigKey,
