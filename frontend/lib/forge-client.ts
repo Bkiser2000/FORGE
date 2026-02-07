@@ -272,7 +272,7 @@ export class ForgeClient {
           params.name,
           params.symbol,
           params.decimals,
-          new anchor.BN(params.initialSupply)  // Use BN for u64
+          params.initialSupply  // Just pass the number, let Anchor convert to u64
         )
         .accounts({
           payer: this.provider.wallet.publicKey,
