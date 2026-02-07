@@ -2,14 +2,21 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import { PublicKey, Connection, Transaction, TransactionInstruction, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import BN from "bn.js";
 
 // Helper to safely create BN for u64 values
 const toBN = (value: number | string): any => {
   const numValue = typeof value === 'string' ? parseInt(value, 10) : Math.floor(value);
-  // Create BN instance with proper initialization
-  const bn = new BN(numValue);
-  return bn;
+  try {
+    // Try to get BN from @coral-xyz/anchor
+    const BN = (anchor as any).BN;
+    if (BN) {
+      return new BN(numValue);
+    }
+  } catch (e) {
+    // Continue to next attempt
+  }
+  // If BN not found, throw with helpful error
+  throw new Error(`BN not available. Value: ${numValue}`);
 };
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
