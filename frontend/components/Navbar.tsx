@@ -118,49 +118,72 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   };
 
   const connectMetaMask = async () => {
-    console.log('Connect MetaMask clicked');
-    const provider = getMetaMaskProvider();
+    console.log('=== Connect MetaMask clicked ===');
     
-    if (!provider) {
-      console.error('MetaMask provider not found');
-      console.log('window.ethereum:', window.ethereum);
-      console.log('window.ethereum?.isMetaMask:', window.ethereum?.isMetaMask);
-      console.log('window.ethereum?.providers:', window.ethereum?.providers);
-      alert('MetaMask is not installed. Please install it to continue.');
-      return;
-    }
-
-    console.log('Found MetaMask provider:', provider);
-    console.log('Provider isMetaMask:', provider.isMetaMask);
-    
-    setIsLoadingMetaMask(true);
     try {
-      console.log('Calling eth_requestAccounts...');
+      const provider = getMetaMaskProvider();
       
-      // Set a timeout for the request
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('MetaMask request timed out')), 10000)
-      );
+      if (!provider) {
+        console.error('MetaMask provider not found');
+        console.log('window:', typeof window);
+        console.log('window.ethereum:', window.ethereum);
+        console.log('window.ethereum?.isMetaMask:', window.ethereum?.isMetaMask);
+        console.log('window.ethereum?.providers:', window.ethereum?.providers);
+        alert('MetaMask is not installed. Please install it to continue.');
+        return;
+      }
+
+      console.log('✓ Found MetaMask provider');
+      console.log('Provider object:', provider);
+      console.log('Provider isMetaMask:', provider.isMetaMask);
+      console.log('Provider request method exists:', typeof provider.request);
       
-      const requestPromise = provider.request({ method: 'eth_requestAccounts' });
+      setIsLoadingMetaMask(true);
       
+      console.log('About to create timeout promise...');
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const timeoutId = setTimeout(() => {
+          console.error('⏱️  TIMEOUT: eth_requestAccounts took more than 10 seconds');
+          reject(new Error('MetaMask request timed out after 10 seconds'));
+        }, 10000);
+        console.log('Timeout set, ID:', timeoutId);
+      });
+      
+      console.log('About to call provider.request...');
+      const requestPromise = (async () => {
+        console.log('Inside requestPromise');
+        try {
+          console.log('Calling provider.request with method: eth_requestAccounts');
+          const result = await provider.request({ method: 'eth_requestAccounts' });
+          console.log('✓ provider.request returned:', result);
+          return result;
+        } catch (innerErr) {
+          console.error('✗ provider.request threw error:', innerErr);
+          throw innerErr;
+        }
+      })();
+      
+      console.log('About to race promises...');
       const accounts = await Promise.race([requestPromise, timeoutPromise]);
       
-      console.log('Connection successful. Accounts:', accounts);
+      console.log('✓ Got accounts:', accounts);
       
       if (accounts && Array.isArray(accounts) && accounts.length > 0) {
-        console.log('Setting account:', accounts[0]);
+        console.log('✓ Setting account:', accounts[0]);
         setMetaMaskAccount(accounts[0]);
         setAllAccounts(accounts as string[]);
       } else {
-        console.warn('No accounts returned or invalid format:', accounts);
+        console.warn('⚠️  No accounts or invalid format:', accounts);
       }
     } catch (err: any) {
+      console.error('=== ERROR ===');
       console.error('Error type:', err?.constructor?.name);
       console.error('Error message:', err?.message);
+      console.error('Error code:', err?.code);
       console.error('Full error:', err);
       alert(`Connection failed: ${err?.message || 'Unknown error'}`);
     } finally {
+      console.log('=== Connect attempt finished ===');
       setIsLoadingMetaMask(false);
     }
   };
