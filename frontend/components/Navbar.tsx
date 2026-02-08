@@ -120,6 +120,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const connectMetaMask = async () => {
     console.log('=== Connect MetaMask clicked ===');
     
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     try {
       const provider = getMetaMaskProvider();
       
@@ -142,7 +144,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
       
       console.log('About to create timeout promise...');
       const timeoutPromise = new Promise<never>((_, reject) => {
-        const timeoutId = setTimeout(() => {
+        timeoutId = setTimeout(() => {
           console.error('⏱️  TIMEOUT: eth_requestAccounts took more than 10 seconds');
           reject(new Error('MetaMask request timed out after 10 seconds'));
         }, 10000);
@@ -166,6 +168,12 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
       console.log('About to race promises...');
       const accounts = await Promise.race([requestPromise, timeoutPromise]);
       
+      // Clear timeout if promise resolved
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        console.log('✓ Cleared timeout');
+      }
+      
       console.log('✓ Got accounts:', accounts);
       
       if (accounts && Array.isArray(accounts) && accounts.length > 0) {
@@ -183,6 +191,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
       console.error('Full error:', err);
       alert(`Connection failed: ${err?.message || 'Unknown error'}`);
     } finally {
+      // Make sure timeout is cleared
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       console.log('=== Connect attempt finished ===');
       setIsLoadingMetaMask(false);
     }
