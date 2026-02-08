@@ -123,26 +123,42 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     
     if (!provider) {
       console.error('MetaMask provider not found');
+      console.log('window.ethereum:', window.ethereum);
+      console.log('window.ethereum?.isMetaMask:', window.ethereum?.isMetaMask);
+      console.log('window.ethereum?.providers:', window.ethereum?.providers);
       alert('MetaMask is not installed. Please install it to continue.');
       return;
     }
 
-    console.log('Found MetaMask provider, requesting connection...');
+    console.log('Found MetaMask provider:', provider);
+    console.log('Provider isMetaMask:', provider.isMetaMask);
+    
     setIsLoadingMetaMask(true);
     try {
       console.log('Calling eth_requestAccounts...');
-      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      
+      // Set a timeout for the request
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('MetaMask request timed out')), 10000)
+      );
+      
+      const requestPromise = provider.request({ method: 'eth_requestAccounts' });
+      
+      const accounts = await Promise.race([requestPromise, timeoutPromise]);
+      
       console.log('Connection successful. Accounts:', accounts);
       
-      if (accounts && accounts.length > 0) {
+      if (accounts && Array.isArray(accounts) && accounts.length > 0) {
         console.log('Setting account:', accounts[0]);
         setMetaMaskAccount(accounts[0]);
-        setAllAccounts(accounts);
+        setAllAccounts(accounts as string[]);
       } else {
-        console.warn('No accounts returned');
+        console.warn('No accounts returned or invalid format:', accounts);
       }
     } catch (err: any) {
-      console.error('Error connecting MetaMask:', err);
+      console.error('Error type:', err?.constructor?.name);
+      console.error('Error message:', err?.message);
+      console.error('Full error:', err);
       alert(`Connection failed: ${err?.message || 'Unknown error'}`);
     } finally {
       setIsLoadingMetaMask(false);
