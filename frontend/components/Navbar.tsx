@@ -4,11 +4,12 @@ import React, { useContext, useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import "@solana/wallet-adapter-react-ui/styles.css";
-import { AppBar, Toolbar, Typography, Button, Box, Select, MenuItem, Menu, ListItemIcon, ListItemText } from "@mui/material";
+import { AppBar, Toolbar, Typography, Button, Box, Select, MenuItem, Menu, ListItemIcon, ListItemText, Tooltip } from "@mui/material";
 import { WalletContext } from "@/pages/_app";
 import Image from "next/image";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import LogoutIcon from "@mui/icons-material/Logout";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
 interface NavbarProps {
   currentPage: "home" | "create" | "dashboard";
@@ -18,18 +19,38 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const walletContext = useContext(WalletContext);
   const { selectedChain, setSelectedChain } = walletContext || {};
-  const { connected } = useWallet();
+  const { connected, disconnect } = useWallet();
   const [isClient, setIsClient] = useState(false);
   const [metaMaskAccount, setMetaMaskAccount] = useState<string | null>(null);
   const [allAccounts, setAllAccounts] = useState<string[]>([]);
   const [isLoadingMetaMask, setIsLoadingMetaMask] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [copied, setCopied] = useState(false);
+  const [showWalletSelector, setShowWalletSelector] = useState(false);
 
   // Ensure component only renders on client
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Handle chain switching - disconnect current wallet when switching chains
+  useEffect(() => {
+    if (!isClient) return;
+
+    if (selectedChain === "solana") {
+      // Disconnecting MetaMask when switching to Solana
+      disconnectMetaMask();
+    } else if (selectedChain === "cronos") {
+      // Disconnecting Solana when switching to Cronos
+      if (connected) {
+        try {
+          disconnect();
+        } catch (err) {
+          console.error('Error disconnecting Solana wallet:', err);
+        }
+      }
+    }
+  }, [selectedChain, connected, disconnect, isClient]);
 
   // Helper function to get MetaMask provider
   const getMetaMaskProvider = () => {
@@ -233,6 +254,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     setMetaMaskAccount(null);
     setAllAccounts([]);
     setAnchorEl(null);
+    setShowWalletSelector(false);
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -348,28 +370,68 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
 
           {/* Wallet Buttons */}
           {selectedChain === "solana" ? (
-            <Box sx={{
-              '& .wallet-adapter-button': {
-                backgroundColor: connected ? '#10b981' : '#2563eb',
-                color: 'white',
-                fontWeight: 'bold',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '14px',
-                transition: 'all 0.3s ease',
-              },
-              '& .wallet-adapter-button:hover': {
-                opacity: 0.9,
-              },
-              '& .wallet-adapter-button:disabled': {
-                opacity: 0.5,
-                cursor: 'not-allowed',
-              },
-            }}>
-              <WalletMultiButton />
-            </Box>
+            !connected ? (
+              <Tooltip title="Choose wallet provider">
+                <Box sx={{
+                  display: 'flex',
+                  gap: 1,
+                  '& .wallet-adapter-button': {
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    transition: 'all 0.3s ease',
+                  },
+                  '& .wallet-adapter-button:hover': {
+                    opacity: 0.9,
+                  },
+                }}>
+                  <WalletMultiButton />
+                  <Button
+                    size="small"
+                    sx={{
+                      backgroundColor: '#2563eb',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      fontSize: '12px',
+                      minWidth: 'auto',
+                      '&:hover': {
+                        opacity: 0.9,
+                      }
+                    }}
+                    onClick={() => setShowWalletSelector(!showWalletSelector)}
+                  >
+                    <SwapHorizIcon sx={{ fontSize: '16px' }} />
+                  </Button>
+                </Box>
+              </Tooltip>
+            ) : (
+              <Box sx={{
+                '& .wallet-adapter-button': {
+                  backgroundColor: '#10b981',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  transition: 'all 0.3s ease',
+                },
+                '& .wallet-adapter-button:hover': {
+                  opacity: 0.9,
+                },
+              }}>
+                <WalletMultiButton />
+              </Box>
+            )
           ) : (
             // MetaMask wallet button for Cronos
             <>
@@ -400,26 +462,28 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
                 </Button>
               ) : (
                 <>
-                  <Button
-                    onClick={handleMenuOpen}
-                    sx={{
-                      backgroundColor: '#10b981',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      transition: 'all 0.3s ease',
-                      textTransform: 'none',
-                      '&:hover': {
-                        opacity: 0.9,
-                      }
-                    }}
-                  >
-                    {formatWallet(metaMaskAccount)}
-                  </Button>
+                  <Tooltip title="Click to manage account">
+                    <Button
+                      onClick={handleMenuOpen}
+                      sx={{
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        transition: 'all 0.3s ease',
+                        textTransform: 'none',
+                        '&:hover': {
+                          opacity: 0.9,
+                        }
+                      }}
+                    >
+                      {formatWallet(metaMaskAccount)}
+                    </Button>
+                  </Tooltip>
                   
                   {/* Dropdown Menu */}
                   <Menu
