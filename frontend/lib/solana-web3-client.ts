@@ -8,7 +8,6 @@ import {
   SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { AbiCoder } from 'ethers';
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 const PROGRAM_ID_STRING = "78Xz6aQi6iozz4rhZqbpaGZjiQSTYw6m8Fh7bpr1WLxR";
@@ -61,13 +60,13 @@ export class SolanaForgeClient {
 
   /**
    * Create a new token using Solang-compiled program with web3.js
-   * Uses proper Solidity ABI encoding for function arguments
+   * Uses raw bytes32 encoding for Solana (no Ethereum ABI wrapper)
    */
   async createToken(params: CreateTokenParams): Promise<string> {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      console.log('=== Starting Token Creation (Solang with ABI Encoding) ===');
+      console.log('=== Starting Token Creation (Solang Raw Encoding) ===');
       console.log('Parameters:', params);
 
       // Generate keypairs for accounts
@@ -80,49 +79,64 @@ export class SolanaForgeClient {
       console.log('  TokenConfig:', tokenConfig.publicKey.toString());
       console.log('  OwnerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      // Solang function selector for createToken (first 4 bytes of keccak256 hash)
-      const functionSelector = Buffer.from([0x5a, 0xf4, 0x7d, 0x2a]);
+      // For Solang on Solana, we encode directly as bytes32 without ABI wrapper
+      // No function selector needed - Solang routes based on instruction data
+      
+      const data = Buffer.alloc(4000);
+      let offset = 0;
 
-      // Use ethers AbiCoder to encode the function parameters in Solidity ABI format
-      const abiCoder = AbiCoder.defaultAbiCoder();
-      
-      // Solana public keys are 32 bytes (bytes32 in Solidity), not 20-byte Ethereum addresses
-      // Convert PublicKey buffers to bytes32 format (0x-prefixed hex)
-      const payerBytes32 = '0x' + this.provider.wallet.publicKey.toBuffer().toString('hex');
-      const tokenConfigBytes32 = '0x' + tokenConfig.publicKey.toBuffer().toString('hex');
-      const mintBytes32 = '0x' + mint.publicKey.toBuffer().toString('hex');
-      const ownerTokenAccountBytes32 = '0x' + ownerTokenAccount.publicKey.toBuffer().toString('hex');
-      
-      console.log('Encoding with bytes32 format:');
-      console.log('  Payer:', payerBytes32);
-      console.log('  TokenConfig:', tokenConfigBytes32);
-      console.log('  Mint:', mintBytes32);
-      console.log('  OwnerTokenAccount:', ownerTokenAccountBytes32);
-      
-      // Encode parameters according to Solidity function signature:
-      // Using bytes32 instead of address since Solana keys are 32 bytes
-      const encodedParams = abiCoder.encode(
-        ['bytes32', 'bytes32', 'bytes32', 'bytes32', 'string', 'string', 'uint8', 'uint64'],
-        [
-          payerBytes32,
-          tokenConfigBytes32,
-          mintBytes32,
-          ownerTokenAccountBytes32,
-          params.name,
-          params.symbol,
-          params.decimals,
-          params.initialSupply
-        ]
-      );
+      // Encode as raw bytes32 parameters (32 bytes each)
+      // payer (bytes32)
+      this.provider.wallet.publicKey.toBuffer().copy(data, offset);
+      offset += 32;
+      console.log('Encoded payer at offset 0');
 
-      // Remove '0x' prefix and convert to buffer
-      const encodedBuffer = Buffer.from(encodedParams.slice(2), 'hex');
-      
-      // Combine function selector with encoded parameters
-      const instructionData = Buffer.concat([functionSelector, encodedBuffer]);
-      
-      console.log('Instruction data length:', instructionData.length);
-      console.log('Instruction data (hex, first 100 chars):', instructionData.toString('hex').substring(0, 100) + '...');
+      // tokenConfigAccount (bytes32)
+      tokenConfig.publicKey.toBuffer().copy(data, offset);
+      offset += 32;
+      console.log('Encoded tokenConfig at offset 32');
+
+      // mint (bytes32)
+      mint.publicKey.toBuffer().copy(data, offset);
+      offset += 32;
+      console.log('Encoded mint at offset 64');
+
+      // ownerTokenAccount (bytes32)
+      ownerTokenAccount.publicKey.toBuffer().copy(data, offset);
+      offset += 32;
+      console.log('Encoded ownerTokenAccount at offset 96');
+
+      // name (length-prefixed string: 4 bytes length + UTF-8 bytes)
+      const nameBytes = Buffer.from(params.name, 'utf8');
+      data.writeUInt32LE(nameBytes.length, offset);
+      offset += 4;
+      nameBytes.copy(data, offset);
+      offset += nameBytes.length;
+      console.log('Encoded name at offset 128');
+
+      // symbol (length-prefixed string: 4 bytes length + UTF-8 bytes)
+      const symbolBytes = Buffer.from(params.symbol, 'utf8');
+      data.writeUInt32LE(symbolBytes.length, offset);
+      offset += 4;
+      symbolBytes.copy(data, offset);
+      offset += symbolBytes.length;
+      console.log('Encoded symbol');
+
+      // decimals (1 byte - u8)
+      data.writeUInt8(params.decimals, offset);
+      offset += 1;
+      console.log('Encoded decimals:', params.decimals);
+
+      // initialSupply (8 bytes - u64, little endian)
+      const supplyBuf = Buffer.alloc(8);
+      supplyBuf.writeBigUInt64LE(BigInt(Math.floor(params.initialSupply)), 0);
+      supplyBuf.copy(data, offset);
+      offset += 8;
+      console.log('Encoded initialSupply:', params.initialSupply);
+
+      const finalData = data.slice(0, offset);
+      console.log('Total instruction data length:', finalData.length, 'bytes');
+      console.log('Instruction data (hex, first 150 chars):', finalData.toString('hex').substring(0, 150) + '...');
 
       // Build instruction
       const instruction = new TransactionInstruction({
@@ -136,7 +150,7 @@ export class SolanaForgeClient {
           { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
         ],
         programId: getProgramId(),
-        data: instructionData,
+        data: finalData,
       });
 
       console.log('Instruction created with', instruction.keys.length, 'accounts');
