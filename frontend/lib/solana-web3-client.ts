@@ -79,68 +79,90 @@ export class SolanaForgeClient {
       console.log('  TokenConfig:', tokenConfig.publicKey.toString());
       console.log('  OwnerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      // For Solang on Solana, we encode directly as bytes32 without ABI wrapper
-      // No function selector needed - Solang routes based on instruction data
+      // For Solang on Solana, we need Ethereum-style ABI encoding
+      // Even though parameters are bytes32, Solang expects ABI-encoded format
+      // This is: selector (8) + parameter offsets/values (padded to 32 bytes)
       
       const data = Buffer.alloc(4000);
       let offset = 0;
 
-      // Encode as raw bytes32 parameters (32 bytes each)
-      // payer (bytes32)
+      // Function selector (8 bytes)
+      const functionSelector = Buffer.from([0x20, 0x9e, 0xc1, 0x03, 0x20, 0xb2, 0x13, 0x60]);
+      functionSelector.copy(data, offset);
+      offset += 8;
+      console.log('Added function selector:', functionSelector.toString('hex'));
+
+      // Encode parameters as 32-byte values (Solang ABI style - padded right for non-standard types)
+      // payer (bytes32) - already 32 bytes
       this.provider.wallet.publicKey.toBuffer().copy(data, offset);
       offset += 32;
-      console.log('Encoded payer at offset 0');
+      console.log('Encoded payer');
 
-      // tokenConfigAccount (bytes32)
+      // tokenConfigAccount (bytes32) - already 32 bytes
       tokenConfig.publicKey.toBuffer().copy(data, offset);
       offset += 32;
-      console.log('Encoded tokenConfig at offset 32');
+      console.log('Encoded tokenConfig');
 
-      // mint (bytes32)
+      // mint (bytes32) - already 32 bytes
       mint.publicKey.toBuffer().copy(data, offset);
       offset += 32;
-      console.log('Encoded mint at offset 64');
+      console.log('Encoded mint');
 
-      // ownerTokenAccount (bytes32)
+      // ownerTokenAccount (bytes32) - already 32 bytes
       ownerTokenAccount.publicKey.toBuffer().copy(data, offset);
       offset += 32;
-      console.log('Encoded ownerTokenAccount at offset 96');
+      console.log('Encoded ownerTokenAccount');
 
-      // name (length-prefixed string: 4 bytes length + UTF-8 bytes)
+      // name (string) - offset to dynamic data (assumed to be after fixed params)
+      // For now, inline the string data: 32-byte padded length + data
       const nameBytes = Buffer.from(params.name, 'utf8');
-      data.writeUInt32LE(nameBytes.length, offset);
+      // In ABI encoding, strings store length then data
+      data.writeUInt32BE(nameBytes.length, offset);
       offset += 4;
       nameBytes.copy(data, offset);
       offset += nameBytes.length;
-      console.log('Encoded name at offset 128');
+      // Pad to 32-byte boundary if needed
+      const namePadding = (32 - (nameBytes.length % 32)) % 32;
+      offset += namePadding;
+      console.log('Encoded name with', namePadding, 'padding bytes');
 
-      // symbol (length-prefixed string: 4 bytes length + UTF-8 bytes)
+      // symbol (string) - same as name
       const symbolBytes = Buffer.from(params.symbol, 'utf8');
-      data.writeUInt32LE(symbolBytes.length, offset);
+      data.writeUInt32BE(symbolBytes.length, offset);
       offset += 4;
       symbolBytes.copy(data, offset);
       offset += symbolBytes.length;
-      console.log('Encoded symbol');
+      const symbolPadding = (32 - (symbolBytes.length % 32)) % 32;
+      offset += symbolPadding;
+      console.log('Encoded symbol with', symbolPadding, 'padding bytes');
 
-      // decimals (1 byte - u8)
+      // decimals (uint8) - pad to 32 bytes
       data.writeUInt8(params.decimals, offset);
-      offset += 1;
-      console.log('Encoded decimals:', params.decimals);
+      offset += 32;
+      console.log('Encoded decimals (padded to 32 bytes)');
 
-      // initialSupply (8 bytes - u64, little endian)
-      const supplyBuf = Buffer.alloc(8);
-      supplyBuf.writeBigUInt64LE(BigInt(Math.floor(params.initialSupply)), 0);
-      supplyBuf.copy(data, offset);
-      offset += 8;
-      console.log('Encoded initialSupply:', params.initialSupply);
+      // initialSupply (uint64) - pad to 32 bytes, big-endian for ABI compatibility
+      data.writeBigUInt64BE(BigInt(Math.floor(params.initialSupply)), offset + 24); // Right-aligned in 32 bytes
+      offset += 32;
+      console.log('Encoded initialSupply (padded to 32 bytes)');
 
       const finalData = data.slice(0, offset);
       console.log('Total instruction data length:', finalData.length, 'bytes');
       console.log('Instruction data (hex, first 150 chars):', finalData.toString('hex').substring(0, 150) + '...');
 
-      // Build instruction
+      // Build instruction with REQUIRED accounts for Solang
+      // According to metadata: dataAccount (writable) + clock sysvar
+      
+      // Create a data account (this will store contract state)
+      const dataAccount = Keypair.generate();
+      
       const instruction = new TransactionInstruction({
         keys: [
+          // Required by Solang: dataAccount (writable for contract storage)
+          { pubkey: dataAccount.publicKey, isSigner: true, isWritable: true },
+          // Required by Solang: clock sysvar
+          { pubkey: new PublicKey("SysvarC1ock11111111111111111111111111111111"), isSigner: false, isWritable: false },
+          // Additional accounts for context
           { pubkey: this.provider.wallet.publicKey, isSigner: true, isWritable: true },
           { pubkey: tokenConfig.publicKey, isSigner: true, isWritable: true },
           { pubkey: mint.publicKey, isSigner: true, isWritable: true },
@@ -154,6 +176,7 @@ export class SolanaForgeClient {
       });
 
       console.log('Instruction created with', instruction.keys.length, 'accounts');
+      console.log('Data account:', dataAccount.publicKey.toString());
 
       // Create and send transaction
       const connection = this.getConnection();
@@ -164,7 +187,8 @@ export class SolanaForgeClient {
       });
 
       transaction.add(instruction);
-      transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
+      // Sign with all required keypairs
+      transaction.partialSign(mint, tokenConfig, ownerTokenAccount, dataAccount);
       
       console.log('Transaction built, sending to wallet for signing...');
       const signedTx = await this.provider.wallet.signTransaction(transaction);
