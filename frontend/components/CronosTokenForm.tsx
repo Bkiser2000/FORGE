@@ -335,7 +335,14 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
             </div>
 
             {error && <div className="error-message">{error}</div>}
-            {success && <div className="success-message">{success}</div>}
+            {success && (
+              <div className="success-message">
+                <div>✓ {success}</div>
+                <div style={{ fontSize: '12px', marginTop: '8px', opacity: 0.8, wordBreak: 'break-all' }}>
+                  Token successfully created!
+                </div>
+              </div>
+            )}
 
             <button type="submit" disabled={loading} className="btn-create">
               {loading ? 'Creating token...' : 'Create Token'}

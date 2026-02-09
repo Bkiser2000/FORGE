@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { useTokens } from "../hooks/useTokens";
+import { WalletContext } from "@/pages/_app";
 import {
   Card,
   CardContent,
@@ -16,6 +17,8 @@ import {
 } from "@mui/material";
 
 const DashboardContent: React.FC = () => {
+  const walletContext = useContext(WalletContext);
+  const { selectedChain } = walletContext || {};
   const { tokens, isMounted } = useTokens();
   const [activeTab, setActiveTab] = useState<"tokens" | "activity">("tokens");
 
@@ -41,6 +44,14 @@ const DashboardContent: React.FC = () => {
     return new Date(timestamp).toLocaleDateString();
   };
 
+  const getNetworkName = () => {
+    return selectedChain === 'cronos' ? 'Cronos Testnet' : 'Solana Devnet';
+  };
+
+  const getNetworkColor = () => {
+    return selectedChain === 'cronos' ? '#e67e22' : '#14f195';
+  };
+
   return (
     <section className="w-full py-12 px-4">
       <div className="max-w-6xl mx-auto">
@@ -49,7 +60,7 @@ const DashboardContent: React.FC = () => {
           Your Tokens
         </Typography>
         <Typography variant="body2" sx={{ mb: 4, color: 'rgba(255,255,255,0.7)' }}>
-          Manage and monitor all your created tokens on Solana devnet
+          Manage and monitor all your created tokens on {getNetworkName()}
         </Typography>
 
         {/* Stats */}
@@ -66,16 +77,16 @@ const DashboardContent: React.FC = () => {
               <Typography variant="h5" sx={{ color: '#a78bfa' }}>{tokens.reduce((sum, t) => sum + t.totalSupply, 0).toLocaleString()}</Typography>
             </CardContent>
           </Card>
-          <Card sx={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+          <Card sx={{ background: `rgba(${selectedChain === 'cronos' ? '230, 126, 34' : '20, 241, 149'}, 0.1)`, border: `1px solid rgba(${selectedChain === 'cronos' ? '230, 126, 34' : '20, 241, 149'}, 0.3)` }}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>Network</Typography>
-              <Typography variant="h5" sx={{ color: '#3b82f6' }}>Solana Devnet</Typography>
+              <Typography variant="h5" sx={{ color: getNetworkColor() }}>{getNetworkName()}</Typography>
             </CardContent>
           </Card>
           <Card sx={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>Status</Typography>
-              <Typography variant="h5" sx={{ color: '#10b981' }}>Active</Typography>
+              <Typography variant="h5" sx={{ color: '#10b981' }}>{tokens.length > 0 ? 'Active' : 'Ready'}</Typography>
             </CardContent>
           </Card>
         </Box>
