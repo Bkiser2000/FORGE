@@ -70,6 +70,40 @@ export const TokenVerifier: React.FC = () => {
     }
   };
 
+  // Estimate initial supply by dividing by 10^decimals
+  // (for tokens from v1/v2 factories that multiplied the supply)
+  const estimateInitialSupply = (totalSupply: string, decimals: number): string => {
+    try {
+      let bigAmount: bigint;
+      if (typeof totalSupply === 'string') {
+        bigAmount = toBigInt(totalSupply);
+      } else {
+        bigAmount = toBigInt(totalSupply);
+      }
+
+      // Divide by 10^decimals to reverse the multiplication
+      const divisor = toBigInt(10 ** decimals);
+      const estimated = bigAmount / divisor;
+      const remainingWei = bigAmount % divisor;
+
+      // If there's a significant remainder, this might not be a multiplied supply
+      const remainderThreshold = divisor / toBigInt(100); // 1% threshold
+      if (remainingWei > remainderThreshold) {
+        // Likely exact supply from v3, not multiplied
+        return formatTokenAmount(totalSupply, decimals);
+      }
+
+      const estimatedNum = Number(estimated);
+      return estimatedNum.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      });
+    } catch (err) {
+      console.error('Error estimating initial supply:', err);
+      return totalSupply?.toString() || '0';
+    }
+  };
+
   const verifyTokens = async () => {
     if (!walletAddress) {
       setError('Please enter a wallet address');
@@ -212,8 +246,11 @@ export const TokenVerifier: React.FC = () => {
               <div style={{ fontSize: '12px', opacity: 0.7, fontFamily: 'monospace', marginBottom: '8px', wordBreak: 'break-all' }}>
                 📍 {token.address}
               </div>
-              <div style={{ fontSize: '13px', marginBottom: '4px' }}>
-                <span style={{ opacity: 0.7 }}>Total Supply:</span> <strong style={{ color: '#10b981' }}>{formatTokenAmount(token.totalSupply, token.decimals)}</strong> {token.symbol}
+              <div style={{ fontSize: '13px', marginBottom: '6px' }}>
+                <span style={{ opacity: 0.7 }}>On-Chain Supply:</span> <strong style={{ color: '#10b981' }}>{formatTokenAmount(token.totalSupply, token.decimals)}</strong> {token.symbol}
+              </div>
+              <div style={{ fontSize: '12px', marginBottom: '8px', opacity: 0.7, background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: '3px' }}>
+                💡 <span style={{ opacity: 0.8 }}>Estimated Initial:</span> <strong>{estimateInitialSupply(token.totalSupply, token.decimals)}</strong> {token.symbol}
               </div>
               <div style={{ fontSize: '13px' }}>
                 <span style={{ opacity: 0.7 }}>Your Balance:</span> <strong style={{ color: '#3b82f6' }}>{formatTokenAmount(token.yourBalance, token.decimals)}</strong> {token.symbol}
