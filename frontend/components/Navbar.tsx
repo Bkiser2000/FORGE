@@ -16,6 +16,22 @@ interface NavbarProps {
   onPageChange: (page: "home" | "create" | "dashboard") => void;
 }
 
+interface EthereumProvider {
+  isMetaMask?: boolean;
+  isPhantom?: boolean;
+  isCoinbaseWallet?: boolean;
+  request: (args: any) => Promise<any>;
+  on: (event: string, handler: any) => void;
+  removeListener: (event: string, handler: any) => void;
+}
+
+interface DetectedWallet {
+  name: string;
+  provider: EthereumProvider;
+  isMetaMask: boolean;
+  isPhantom: boolean;
+}
+
 const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const walletContext = useContext(WalletContext);
   const { selectedChain, setSelectedChain } = walletContext || {};
@@ -27,6 +43,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [copied, setCopied] = useState(false);
   const [showWalletSelector, setShowWalletSelector] = useState(false);
+  const [availableWallets, setAvailableWallets] = useState<DetectedWallet[]>([]);
+  const [selectedWalletAnchor, setSelectedWalletAnchor] = useState<null | HTMLElement>(null);
 
   // Ensure component only renders on client
   useEffect(() => {
@@ -63,29 +81,71 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     handleChainSwitch();
   }, [selectedChain, connected, disconnect, isClient]);
 
-  // Helper function to get MetaMask provider specifically
-  const getMetaMaskProvider = () => {
-    if (typeof window === 'undefined') return null;
+  // Helper function to detect all available EVM wallets (MetaMask, Phantom, etc.)
+  const detectAvailableWallets = (): DetectedWallet[] => {
+    if (typeof window === 'undefined') return [];
     
-    console.log('[MetaMask Detection] Starting provider detection');
+    console.log('[Wallet Detection] Starting to detect available wallets');
+    const detected: DetectedWallet[] = [];
     
-    // Strategy 1: Check if window.ethereum itself is MetaMask (most common case)
-    if (window.ethereum?.isMetaMask === true) {
-      console.log('[MetaMask Detection] ✓ Found MetaMask as primary provider');
-      return window.ethereum;
-    }
-    
-    // Strategy 2: Look through providers array for MetaMask specifically
-    if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
-      console.log(`[MetaMask Detection] Checking ${window.ethereum.providers.length} providers in array`);
-      const metaMask = window.ethereum.providers.find((p: any) => p?.isMetaMask === true);
-      if (metaMask) {
-        console.log('[MetaMask Detection] ✓ Found MetaMask in providers array');
-        return metaMask;
+    // Check primary window.ethereum
+    if (window.ethereum) {
+      if (window.ethereum.isMetaMask === true) {
+        console.log('[Wallet Detection] ✓ Found MetaMask as primary provider');
+        detected.push({
+          name: 'MetaMask',
+          provider: window.ethereum as EthereumProvider,
+          isMetaMask: true,
+          isPhantom: false,
+        });
+      } else if (window.ethereum.isPhantom === true) {
+        console.log('[Wallet Detection] ✓ Found Phantom as primary provider');
+        detected.push({
+          name: 'Phantom',
+          provider: window.ethereum as EthereumProvider,
+          isMetaMask: false,
+          isPhantom: true,
+        });
       }
     }
     
-    console.log('[MetaMask Detection] ✗ MetaMask provider not found');
+    // Check providers array for other wallets
+    if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+      console.log(`[Wallet Detection] Checking ${window.ethereum.providers.length} providers in array`);
+      window.ethereum.providers.forEach((provider: any, index: number) => {
+        if (provider.isMetaMask === true && !detected.find(w => w.isMetaMask)) {
+          console.log(`[Wallet Detection] ✓ Found MetaMask in providers[${index}]`);
+          detected.push({
+            name: 'MetaMask',
+            provider: provider as EthereumProvider,
+            isMetaMask: true,
+            isPhantom: false,
+          });
+        } else if (provider.isPhantom === true && !detected.find(w => w.isPhantom)) {
+          console.log(`[Wallet Detection] ✓ Found Phantom in providers[${index}]`);
+          detected.push({
+            name: 'Phantom',
+            provider: provider as EthereumProvider,
+            isMetaMask: false,
+            isPhantom: true,
+          });
+        }
+      });
+    }
+    
+    console.log(`[Wallet Detection] Found ${detected.length} wallets:`, detected.map(w => w.name));
+    return detected;
+  };
+
+  // Helper function to get MetaMask provider specifically
+  const getMetaMaskProvider = (): EthereumProvider | null => {
+    const wallets = detectAvailableWallets();
+    const metaMask = wallets.find(w => w.isMetaMask);
+    if (metaMask) {
+      console.log('[MetaMask Provider] Using MetaMask provider:', metaMask.name);
+      return metaMask.provider;
+    }
+    console.log('[MetaMask Provider] MetaMask provider not found');
     return null;
   };
 
@@ -93,44 +153,50 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   useEffect(() => {
     if (!isClient || selectedChain !== "cronos") return;
 
-    const checkMetaMaskConnection = async () => {
-      console.log('[MetaMask Check] Checking MetaMask connection on Cronos chain');
-      const provider = getMetaMaskProvider();
-      if (!provider) {
-        console.log('[MetaMask Check] No MetaMask provider found, clearing account');
+    const checkWalletsAndConnection = async () => {
+      console.log('[Wallet Check] Checking available wallets on Cronos chain');
+      
+      // Detect all available wallets
+      const wallets = detectAvailableWallets();
+      setAvailableWallets(wallets);
+      
+      // Try to connect with MetaMask specifically
+      const metaMaskProvider = getMetaMaskProvider();
+      if (!metaMaskProvider) {
+        console.log('[Wallet Check] No MetaMask provider found, clearing account');
         setMetaMaskAccount(null);
         setAllAccounts([]);
         return;
       }
 
       try {
-        console.log('[MetaMask Check] Requesting eth_accounts...');
-        const accounts = await provider.request({ method: 'eth_accounts' });
-        console.log('[MetaMask Check] Accounts returned:', accounts);
+        console.log('[Wallet Check] Requesting eth_accounts from MetaMask...');
+        const accounts = await metaMaskProvider.request({ method: 'eth_accounts' });
+        console.log('[Wallet Check] Accounts returned:', accounts);
         if (accounts && Array.isArray(accounts) && accounts.length > 0) {
-          console.log('[MetaMask Check] Setting account:', accounts[0]);
+          console.log('[Wallet Check] Setting account:', accounts[0]);
           setMetaMaskAccount(accounts[0]);
           setAllAccounts(accounts);
         } else {
-          console.log('[MetaMask Check] No accounts found');
+          console.log('[Wallet Check] No accounts found');
           setMetaMaskAccount(null);
           setAllAccounts([]);
         }
       } catch (err) {
-        console.error('[MetaMask Check] Error checking connection:', err);
+        console.error('[Wallet Check] Error checking connection:', err);
         setMetaMaskAccount(null);
         setAllAccounts([]);
       }
     };
 
-    checkMetaMaskConnection();
+    checkWalletsAndConnection();
 
     // Listen for account changes only when on Cronos
     const provider = getMetaMaskProvider();
     if (provider) {
-      console.log('[MetaMask Listener] Setting up accountsChanged listener for Cronos');
+      console.log('[Wallet Listener] Setting up accountsChanged listener for Cronos');
       const handleAccountsChanged = (accounts: any) => {
-        console.log('[MetaMask Listener] Accounts changed event:', accounts);
+        console.log('[Wallet Listener] Accounts changed event:', accounts);
         if (accounts && Array.isArray(accounts) && accounts.length > 0) {
           setMetaMaskAccount(accounts[0]);
           setAllAccounts(accounts);
@@ -153,50 +219,45 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
   };
 
-  const connectMetaMask = async () => {
-    console.log('=== Connect MetaMask clicked ===');
+  const connectWithWallet = async (wallet: DetectedWallet) => {
+    console.log(`=== Connecting with ${wallet.name} ===`);
     
     let timeoutId: NodeJS.Timeout | null = null;
     
     try {
-      const provider = getMetaMaskProvider();
+      const provider = wallet.provider;
       
       if (!provider) {
-        console.error('MetaMask provider not found');
-        console.log('window:', typeof window);
-        console.log('window.ethereum:', window.ethereum);
-        console.log('window.ethereum?.isMetaMask:', window.ethereum?.isMetaMask);
-        console.log('window.ethereum?.providers:', window.ethereum?.providers);
-        alert('MetaMask is not installed. Please install it to continue.');
+        console.error(`${wallet.name} provider not found`);
+        alert(`${wallet.name} is not installed. Please install it to continue.`);
         return;
       }
 
-      console.log('✓ Found MetaMask provider');
+      console.log(`✓ Found ${wallet.name} provider`);
       console.log('Provider object:', provider);
-      console.log('Provider isMetaMask:', provider.isMetaMask);
-      console.log('Provider request method exists:', typeof provider.request);
       
       setIsLoadingMetaMask(true);
+      setSelectedWalletAnchor(null); // Close the menu
       
       console.log('About to create timeout promise...');
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
-          console.error('⏱️  TIMEOUT: eth_requestAccounts took more than 10 seconds');
-          reject(new Error('MetaMask request timed out after 10 seconds'));
+          console.error(`⏱️  TIMEOUT: eth_requestAccounts took more than 10 seconds with ${wallet.name}`);
+          reject(new Error(`${wallet.name} request timed out after 10 seconds`));
         }, 10000);
         console.log('Timeout set, ID:', timeoutId);
       });
       
-      console.log('About to call provider.request...');
+      console.log(`About to call ${wallet.name}.request with eth_requestAccounts...`);
       const requestPromise = (async () => {
-        console.log('Inside requestPromise');
+        console.log(`Inside ${wallet.name} requestPromise`);
         try {
-          console.log('Calling provider.request with method: eth_requestAccounts');
+          console.log(`Calling ${wallet.name}.request with method: eth_requestAccounts`);
           const result = await provider.request({ method: 'eth_requestAccounts' });
-          console.log('✓ provider.request returned:', result);
+          console.log(`✓ ${wallet.name}.request returned:`, result);
           return result;
         } catch (innerErr) {
-          console.error('✗ provider.request threw error:', innerErr);
+          console.error(`✗ ${wallet.name}.request threw error:`, innerErr);
           throw innerErr;
         }
       })();
@@ -234,6 +295,19 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
       console.log('=== Connect attempt finished ===');
       setIsLoadingMetaMask(false);
     }
+  };
+
+  const connectMetaMask = async () => {
+    const metaMaskWallet = availableWallets.find(w => w.isMetaMask);
+    if (metaMaskWallet) {
+      await connectWithWallet(metaMaskWallet);
+    } else {
+      alert('MetaMask not found. Please install MetaMask extension.');
+    }
+  };
+
+  const handleWalletSelect = async (wallet: DetectedWallet) => {
+    await connectWithWallet(wallet);
   };
 
   const copyAddress = async () => {
@@ -452,33 +526,93 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
               </Box>
             )
           ) : (
-            // MetaMask wallet button for Cronos
+            // Cronos: Show available EVM wallets
             <>
               {!metaMaskAccount ? (
-                <Button
-                  onClick={connectMetaMask}
-                  disabled={isLoadingMetaMask}
-                  sx={{
-                    backgroundColor: '#2563eb',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    border: 'none',
-                    cursor: isLoadingMetaMask ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    transition: 'all 0.3s ease',
-                    textTransform: 'none',
-                    '&:hover': {
-                      opacity: 0.9,
-                    },
-                    '&:disabled': {
+                availableWallets.length > 0 ? (
+                  <>
+                    <Tooltip title={`${availableWallets.length} wallet(s) available`}>
+                      <Button
+                        onClick={(e) => setSelectedWalletAnchor(e.currentTarget)}
+                        disabled={isLoadingMetaMask}
+                        sx={{
+                          backgroundColor: '#2563eb',
+                          color: 'white',
+                          fontWeight: 'bold',
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          cursor: isLoadingMetaMask ? 'not-allowed' : 'pointer',
+                          fontSize: '14px',
+                          transition: 'all 0.3s ease',
+                          textTransform: 'none',
+                          '&:hover': {
+                            opacity: 0.9,
+                          },
+                          '&:disabled': {
+                            opacity: 0.5,
+                          }
+                        }}
+                      >
+                        {isLoadingMetaMask ? 'Connecting...' : `Connect (${availableWallets.length})`}
+                      </Button>
+                    </Tooltip>
+
+                    {/* Wallet Selection Menu */}
+                    <Menu
+                      anchorEl={selectedWalletAnchor}
+                      open={Boolean(selectedWalletAnchor)}
+                      onClose={() => setSelectedWalletAnchor(null)}
+                      PaperProps={{
+                        sx: {
+                          backgroundColor: '#1a1f2e',
+                          color: 'white',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                        }
+                      }}
+                    >
+                      <MenuItem disabled sx={{ pointerEvents: 'none' }}>
+                        <Box sx={{ fontSize: '12px', opacity: 0.7 }}>
+                          Select Wallet:
+                        </Box>
+                      </MenuItem>
+                      <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', my: 0.5 }} />
+                      {availableWallets.map((wallet) => (
+                        <MenuItem
+                          key={wallet.name}
+                          onClick={() => handleWalletSelect(wallet)}
+                          sx={{
+                            fontSize: '14px',
+                            '&:hover': {
+                              backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                            }
+                          }}
+                        >
+                          {wallet.name}
+                        </MenuItem>
+                      ))}
+                    </Menu>
+                  </>
+                ) : (
+                  <Button
+                    disabled
+                    sx={{
+                      backgroundColor: '#666',
+                      color: 'white',
+                      fontWeight: 'bold',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      cursor: 'not-allowed',
+                      fontSize: '14px',
+                      textTransform: 'none',
                       opacity: 0.5,
-                    }
-                  }}
-                >
-                  {isLoadingMetaMask ? 'Connecting...' : 'Connect MetaMask'}
-                </Button>
+                    }}
+                  >
+                    No Wallets
+                  </Button>
+                )
               ) : (
                 <>
                   <Tooltip title="Click to manage account">
