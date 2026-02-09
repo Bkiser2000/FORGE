@@ -8,6 +8,7 @@ import {
   SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { AbiCoder } from 'ethers';
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
 const PROGRAM_ID_STRING = "9FaWqbx7CXFPmp2SQbjiJqcGA13BggABJLyL7LS7xKZn";
@@ -60,12 +61,13 @@ export class SolanaForgeClient {
 
   /**
    * Create a new token using Solang-compiled program with web3.js
+   * Uses proper Solidity ABI encoding for function arguments
    */
   async createToken(params: CreateTokenParams): Promise<string> {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      console.log('=== Starting Token Creation (Web3.js) ===');
+      console.log('=== Starting Token Creation (Solang with ABI Encoding) ===');
       console.log('Parameters:', params);
 
       // Generate keypairs for accounts
@@ -73,70 +75,41 @@ export class SolanaForgeClient {
       const tokenConfig = Keypair.generate();
       const ownerTokenAccount = Keypair.generate();
 
-      // Build instruction data for Solang function
-      // Solang uses function selectors (4 bytes) instead of 8-byte Anchor discriminators
-      const instructionSelector = Buffer.from([0x5a, 0xf4, 0x7d, 0x2a]); // createToken selector
+      console.log('Generated keypairs:');
+      console.log('  Mint:', mint.publicKey.toString());
+      console.log('  TokenConfig:', tokenConfig.publicKey.toString());
+      console.log('  OwnerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      // Serialize parameters in order:
-      // payer (32 bytes - pubkey)
-      // tokenConfigAccount (32 bytes - pubkey)
-      // mint (32 bytes - pubkey)
-      // ownerTokenAccount (32 bytes - pubkey)
-      // name (dynamic - string)
-      // symbol (dynamic - string)
-      // decimals (1 byte - u8)
-      // initialSupply (8 bytes - u64)
+      // Solang function selector for createToken (first 4 bytes of keccak256 hash)
+      const functionSelector = Buffer.from([0x5a, 0xf4, 0x7d, 0x2a]);
 
-      const data = Buffer.alloc(4000);
-      let offset = 0;
+      // Use ethers AbiCoder to encode the function parameters in Solidity ABI format
+      const abiCoder = AbiCoder.defaultAbiCoder();
+      
+      // Encode parameters according to Solidity function signature:
+      // function createToken(address, address, address, address, string, string, uint8, uint64)
+      const encodedParams = abiCoder.encode(
+        ['address', 'address', 'address', 'address', 'string', 'string', 'uint8', 'uint64'],
+        [
+          '0x' + this.provider.wallet.publicKey.toBuffer().toString('hex'),
+          '0x' + tokenConfig.publicKey.toBuffer().toString('hex'),
+          '0x' + mint.publicKey.toBuffer().toString('hex'),
+          '0x' + ownerTokenAccount.publicKey.toBuffer().toString('hex'),
+          params.name,
+          params.symbol,
+          params.decimals,
+          params.initialSupply
+        ]
+      );
 
-      // Function selector (4 bytes)
-      instructionSelector.copy(data, offset);
-      offset += 4;
-
-      // payer (32 bytes)
-      this.provider.wallet.publicKey.toBuffer().copy(data, offset);
-      offset += 32;
-
-      // tokenConfigAccount (32 bytes)
-      tokenConfig.publicKey.toBuffer().copy(data, offset);
-      offset += 32;
-
-      // mint (32 bytes)
-      mint.publicKey.toBuffer().copy(data, offset);
-      offset += 32;
-
-      // ownerTokenAccount (32 bytes)
-      ownerTokenAccount.publicKey.toBuffer().copy(data, offset);
-      offset += 32;
-
-      // name (dynamic string - 4 byte length prefix + bytes)
-      const nameBytes = Buffer.from(params.name, 'utf8');
-      data.writeUInt32LE(nameBytes.length, offset);
-      offset += 4;
-      nameBytes.copy(data, offset);
-      offset += nameBytes.length;
-
-      // symbol (dynamic string - 4 byte length prefix + bytes)
-      const symbolBytes = Buffer.from(params.symbol, 'utf8');
-      data.writeUInt32LE(symbolBytes.length, offset);
-      offset += 4;
-      symbolBytes.copy(data, offset);
-      offset += symbolBytes.length;
-
-      // decimals (1 byte - u8)
-      data.writeUInt8(params.decimals, offset);
-      offset += 1;
-
-      // initialSupply (8 bytes - u64, little endian)
-      const supplyBuf = Buffer.alloc(8);
-      supplyBuf.writeBigUInt64LE(BigInt(Math.floor(params.initialSupply)), 0);
-      supplyBuf.copy(data, offset);
-      offset += 8;
-
-      const finalData = data.slice(0, offset);
-      console.log('Instruction data length:', finalData.length);
-      console.log('Instruction data (hex):', finalData.toString('hex').substring(0, 100) + '...');
+      // Remove '0x' prefix and convert to buffer
+      const encodedBuffer = Buffer.from(encodedParams.slice(2), 'hex');
+      
+      // Combine function selector with encoded parameters
+      const instructionData = Buffer.concat([functionSelector, encodedBuffer]);
+      
+      console.log('Instruction data length:', instructionData.length);
+      console.log('Instruction data (hex, first 100 chars):', instructionData.toString('hex').substring(0, 100) + '...');
 
       // Build instruction
       const instruction = new TransactionInstruction({
@@ -150,8 +123,10 @@ export class SolanaForgeClient {
           { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
         ],
         programId: getProgramId(),
-        data: finalData,
+        data: instructionData,
       });
+
+      console.log('Instruction created with', instruction.keys.length, 'accounts');
 
       // Create and send transaction
       const connection = this.getConnection();
@@ -163,6 +138,8 @@ export class SolanaForgeClient {
 
       transaction.add(instruction);
       transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
+      
+      console.log('Transaction built, sending to wallet for signing...');
       const signedTx = await this.provider.wallet.signTransaction(transaction);
 
       console.log('Sending transaction...');
@@ -171,6 +148,7 @@ export class SolanaForgeClient {
       console.log('✓ Transaction sent! Signature:', signature);
       
       // Wait for confirmation
+      console.log('Waiting for confirmation...');
       await connection.confirmTransaction(signature, 'confirmed');
       console.log('✓ Transaction confirmed!');
 
