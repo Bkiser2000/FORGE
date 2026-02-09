@@ -2,7 +2,7 @@ import { BrowserProvider, Contract, parseUnits, toBeHex } from 'ethers';
 
 // Contract ABIs
 const TOKEN_FACTORY_ABI = [
-  "function createToken(string memory name, string memory symbol, uint256 initialSupply, uint256 maxSupply) public returns (address)",
+  "function createToken(string memory name, string memory symbol, uint256 initialSupply, uint256 maxSupply, uint8 decimals) public returns (address)",
   "function deployedTokens(uint256) public view returns (address)",
   "function getTokenCount() public view returns (uint256)",
   "function getCreatorTokens(address creator) public view returns (address[])",
@@ -29,6 +29,7 @@ export interface CreateCronosTokenParams {
   symbol: string;
   initialSupply: number;
   maxSupply?: number;
+  decimals?: number;
 }
 
 export interface CronosToken {
@@ -46,8 +47,9 @@ export class CronosTokenClient {
   private factoryAddress: string;
   private factoryContract: Contract | null = null;
 
+  // Default to new factory address if not provided
   constructor(
-    factoryAddress: string,
+    factoryAddress: string = '0xa01cEC833f6366F9363cF2FBbE3b5f0DCB60442e',
     rpcUrl: string = 'https://evm-t0.cronos.org'
   ) {
     this.factoryAddress = factoryAddress;
@@ -77,11 +79,13 @@ export class CronosTokenClient {
     try {
       console.log('Creating token with params:', params);
 
+      const decimals = params.decimals || 18;
       const tx = await this.factoryContract.createToken(
         params.name,
         params.symbol,
         parseUnits(params.initialSupply.toString(), 18),
-        params.maxSupply ? parseUnits(params.maxSupply.toString(), 18) : 0
+        params.maxSupply ? parseUnits(params.maxSupply.toString(), 18) : 0,
+        decimals
       );
 
       console.log('Transaction sent:', tx.hash);

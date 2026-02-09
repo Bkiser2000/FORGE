@@ -26,23 +26,27 @@ contract TokenFactory {
      * @param symbol Token symbol
      * @param initialSupply Initial supply
      * @param maxSupply Maximum supply (0 for unlimited)
+     * @param decimals Number of decimals for the token
      * @return newToken Address of created token
      */
     function createToken(
         string memory name,
         string memory symbol,
         uint256 initialSupply,
-        uint256 maxSupply
+        uint256 maxSupply,
+        uint8 decimals
     ) public returns (address) {
         require(initialSupply > 0, "Initial supply must be greater than 0");
         require(bytes(name).length > 0, "Name is required");
         require(bytes(symbol).length > 0, "Symbol is required");
+        require(decimals <= 18, "Decimals must be 18 or less");
 
         ForgeToken newToken = new ForgeToken(
             name,
             symbol,
             initialSupply,
-            maxSupply
+            maxSupply,
+            decimals
         );
 
         address tokenAddress = address(newToken);

@@ -12,6 +12,7 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     symbol: '',
     initialSupply: 1000,
     maxSupply: 0,
+    decimals: 18,
   });
 
   const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
 
   // TokenFactory contract address on Cronos Testnet
   // Update this address if you deploy a new factory contract
-  const FACTORY_ADDRESS = '0x0Eded943B926951bA233CE2A6044f20A5936788e';
+  const FACTORY_ADDRESS = '0xa01cEC833f6366F9363cF2FBbE3b5f0DCB60442e';
   const CRONOS_RPC = 'https://evm-t3.cronos.org'; // Cronos testnet
 
   useEffect(() => {
@@ -151,12 +152,27 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name.includes('Supply') ? parseInt(value) || 0 : value
+      [name]: name === 'decimals' 
+        ? parseInt(value) 
+        : name.includes('Supply') 
+          ? parseInt(value) || 0 
+          : value
     }));
+  };
+
+  // Calculate and display supply recommendations based on decimals
+  const getSupplyRecommendations = (decimals: number) => {
+    const recommendations: { [key: number]: { min: string; max: string; description: string } } = {
+      6: { min: '1,000,000', max: '1,000,000,000', description: 'Coins (similar to USDC, USDT)' },
+      8: { min: '1,000,000', max: '21,000,000', description: 'Standard (similar to Bitcoin)' },
+      9: { min: '1,000,000', max: '100,000,000', description: 'Alternative standard' },
+      18: { min: '1,000', max: '1,000,000,000', description: 'Ethereum standard (wei-based)' },
+    };
+    return recommendations[decimals] || recommendations[18];
   };
 
   const verifyNetwork = async (): Promise<boolean> => {
@@ -234,6 +250,7 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
         symbol: formData.symbol,
         initialSupply: formData.initialSupply,
         maxSupply: formData.maxSupply || undefined,
+        decimals: formData.decimals,
       });
 
       console.log('Token created at:', tokenAddress);
@@ -249,6 +266,7 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
         symbol: '',
         initialSupply: 1000,
         maxSupply: 0,
+        decimals: 18,
       });
     } catch (err: any) {
       console.error('Error creating token:', err);
@@ -310,6 +328,39 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
 
             <div className="form-row">
               <div className="form-group">
+                <label htmlFor="decimals">Decimals (Token Precision) *</label>
+                <select
+                  id="decimals"
+                  name="decimals"
+                  value={formData.decimals}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    fontSize: '14px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer',
+                  }}
+                  required
+                >
+                  <option value="6">6 Decimals (Coins - like USDC)</option>
+                  <option value="8">8 Decimals (Standard - like Bitcoin)</option>
+                  <option value="9">9 Decimals (Alternative Standard)</option>
+                  <option value="18">18 Decimals (Ethereum Standard)</option>
+                </select>
+                <small style={{ opacity: 0.6, display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                  {(() => {
+                    const rec = getSupplyRecommendations(formData.decimals);
+                    return `Recommended: ${rec.min} - ${rec.max} tokens (${rec.description})`;
+                  })()}
+                </small>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
                 <label htmlFor="initialSupply">Initial Supply *</label>
                 <input
                   id="initialSupply"
@@ -322,7 +373,7 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
                   required
                 />
                 <small style={{ opacity: 0.6, display: 'block', marginTop: '4px' }}>
-                  Enter the number of tokens (e.g., 1000 = 1000 tokens with 18 decimals)
+                  Enter the number of tokens (e.g., 1000 = 1000 tokens with {formData.decimals} decimals)
                 </small>
               </div>
 

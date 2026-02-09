@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Contract, JsonRpcProvider, formatUnits } from 'ethers';
+import { Contract, JsonRpcProvider, formatUnits, toBigInt } from 'ethers';
 
 const TOKEN_FACTORY_ABI = [
   "function getCreatorTokens(address creator) public view returns (address[])",
@@ -10,6 +10,7 @@ const TOKEN_FACTORY_ABI = [
 const FORGE_TOKEN_ABI = [
   "function name() public view returns (string)",
   "function symbol() public view returns (string)",
+  "function decimals() public view returns (uint8)",
   "function totalSupply() public view returns (uint256)",
   "function balanceOf(address account) public view returns (uint256)",
 ];
@@ -20,6 +21,7 @@ interface VerifiedToken {
   symbol: string;
   totalSupply: string;
   yourBalance: string;
+  decimals: number;
 }
 
 export const TokenVerifier: React.FC = () => {
@@ -28,22 +30,39 @@ export const TokenVerifier: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const FACTORY_ADDRESS = '0x0Eded943B926951bA233CE2A6044f20A5936788e';
+  const FACTORY_ADDRESS = '0xa01cEC833f6366F9363cF2FBbE3b5f0DCB60442e';
   const CRONOS_RPC = 'https://evm-t3.cronos.org';
 
-  const formatTokenAmount = (amount: string): string => {
+  const formatTokenAmount = (amount: string | bigint | number, decimals: number = 18): string => {
     try {
-      // Convert from wei (18 decimals) to human-readable format
-      const formatted = formatUnits(amount, 18);
-      const num = parseFloat(formatted);
-      
+      // Convert input to BigInt if it's a string
+      let bigAmount: bigint;
+      if (typeof amount === 'string') {
+        bigAmount = toBigInt(amount);
+      } else if (typeof amount === 'number') {
+        bigAmount = toBigInt(amount);
+      } else {
+        bigAmount = amount;
+      }
+
+      // Manually divide by 10^decimals to convert from wei
+      const divisor = toBigInt(10 ** decimals);
+      const whole = bigAmount / divisor;
+      const remainder = bigAmount % divisor;
+
+      // Convert to decimal number
+      const wholeNum = Number(whole);
+      const remainderNum = Number(remainder) / (10 ** decimals);
+      const num = wholeNum + remainderNum;
+
       // Format with comma separators and minimal decimals
       return num.toLocaleString('en-US', {
         minimumFractionDigits: 0,
-        maximumFractionDigits: num % 1 === 0 ? 0 : 2,
+        maximumFractionDigits: num % 1 === 0 ? 0 : 6,
       });
     } catch (err) {
-      return amount;
+      console.error('Error formatting token amount:', err);
+      return amount?.toString() || '0';
     }
   };
 
@@ -77,9 +96,10 @@ export const TokenVerifier: React.FC = () => {
       for (const tokenAddr of tokenAddresses) {
         try {
           const tokenContract = new Contract(tokenAddr, FORGE_TOKEN_ABI, provider);
-          const [name, symbol, totalSupply, balance] = await Promise.all([
+          const [name, symbol, decimals, totalSupply, balance] = await Promise.all([
             tokenContract.name(),
             tokenContract.symbol(),
+            tokenContract.decimals(),
             tokenContract.totalSupply(),
             tokenContract.balanceOf(walletAddress),
           ]);
@@ -88,6 +108,7 @@ export const TokenVerifier: React.FC = () => {
             address: tokenAddr,
             name,
             symbol,
+            decimals: Number(decimals),
             totalSupply: totalSupply.toString(),
             yourBalance: balance.toString(),
           });
@@ -174,10 +195,10 @@ export const TokenVerifier: React.FC = () => {
                 📍 {token.address}
               </div>
               <div style={{ fontSize: '13px', marginBottom: '4px' }}>
-                <span style={{ opacity: 0.7 }}>Total Supply:</span> <strong style={{ color: '#10b981' }}>{formatTokenAmount(token.totalSupply)}</strong> {token.symbol}
+                <span style={{ opacity: 0.7 }}>Total Supply:</span> <strong style={{ color: '#10b981' }}>{formatTokenAmount(token.totalSupply, token.decimals)}</strong> {token.symbol}
               </div>
               <div style={{ fontSize: '13px' }}>
-                <span style={{ opacity: 0.7 }}>Your Balance:</span> <strong style={{ color: '#3b82f6' }}>{formatTokenAmount(token.yourBalance)}</strong> {token.symbol}
+                <span style={{ opacity: 0.7 }}>Your Balance:</span> <strong style={{ color: '#3b82f6' }}>{formatTokenAmount(token.yourBalance, token.decimals)}</strong> {token.symbol}
               </div>
             </div>
           ))}

@@ -17,6 +17,9 @@ contract ForgeToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
     // Token metadata
     string public tokenURI;
     
+    // Custom decimals
+    uint8 private _decimals;
+    
     // Events
     event TokenCreated(
         string indexed name,
@@ -35,17 +38,21 @@ contract ForgeToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
      * @param symbol Token symbol
      * @param initialSupply Initial supply amount (will be multiplied by 10^decimals)
      * @param _maxSupply Maximum supply cap (0 for unlimited)
+     * @param _tokenDecimals Number of decimals for the token
      */
     constructor(
         string memory name,
         string memory symbol,
         uint256 initialSupply,
-        uint256 _maxSupply
+        uint256 _maxSupply,
+        uint8 _tokenDecimals
     ) ERC20(name, symbol) {
         require(initialSupply > 0, "Initial supply must be greater than 0");
+        require(_tokenDecimals <= 18, "Decimals must be 18 or less");
         
+        _decimals = _tokenDecimals;
         maxSupply = _maxSupply;
-        uint256 initialAmount = initialSupply * 10 ** decimals();
+        uint256 initialAmount = initialSupply * 10 ** _decimals;
         
         // Mint initial supply to creator
         _mint(msg.sender, initialAmount);
@@ -53,7 +60,7 @@ contract ForgeToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
         emit TokenCreated(
             name,
             symbol,
-            decimals(),
+            _decimals,
             initialAmount,
             msg.sender
         );
@@ -119,6 +126,13 @@ contract ForgeToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
             ? maxSupply - totalSupply()
             : 0;
         return remaining;
+    }
+
+    /**
+     * @dev Override decimals function
+     */
+    function decimals() public view override returns (uint8) {
+        return _decimals;
     }
 
     // Required overrides for ERC20 extensions
