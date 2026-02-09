@@ -1,0 +1,414 @@
+{
+  "version": "0.0.1",
+  "name": "ForgeSolana",
+  "docs": [
+    "title: Forge Solana Token Program",
+    "notice: A program to create and manage custom SPL tokens on Solana"
+  ],
+  "instructions": [
+    {
+      "name": "new",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "tokenConfigs",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "arg0",
+          "type": "publicKey"
+        }
+      ],
+      "returns": {
+        "defined": "tokenConfigs_returns"
+      }
+    },
+    {
+      "name": "allTokens",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "arg0",
+          "type": "u256"
+        }
+      ],
+      "returns": "publicKey"
+    },
+    {
+      "name": "createToken",
+      "docs": [
+        "notice: Create a new token with custom specifications",
+        "param: The account paying for the transaction",
+        "param: The account storing token configuration",
+        "param: The mint account for the token",
+        "param: The token account for the owner",
+        "param: The name of the token",
+        "param: The symbol of the token",
+        "param: The number of decimals",
+        "param: The initial supply amount"
+      ],
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        },
+        {
+          "name": "clock",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "payer",
+          "type": "publicKey"
+        },
+        {
+          "name": "tokenconfigaccount",
+          "type": "publicKey"
+        },
+        {
+          "name": "mint",
+          "type": "publicKey"
+        },
+        {
+          "name": "ownertokenaccount",
+          "type": "publicKey"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "decimals",
+          "type": "u8"
+        },
+        {
+          "name": "initialsupply",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "mintTokens",
+      "docs": [
+        "notice: Mint additional tokens",
+        "param: The account paying for the transaction",
+        "param: The token configuration account",
+        "param: The mint account",
+        "param: The token account to mint to",
+        "param: The amount to mint"
+      ],
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "payer",
+          "type": "publicKey"
+        },
+        {
+          "name": "tokenconfigaccount",
+          "type": "publicKey"
+        },
+        {
+          "name": "mint",
+          "type": "publicKey"
+        },
+        {
+          "name": "tokenaccount",
+          "type": "publicKey"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "burnTokens",
+      "docs": [
+        "notice: Burn tokens",
+        "param: The account paying for the transaction",
+        "param: The token configuration account",
+        "param: The mint account",
+        "param: The token account to burn from",
+        "param: The amount to burn"
+      ],
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "payer",
+          "type": "publicKey"
+        },
+        {
+          "name": "tokenconfigaccount",
+          "type": "publicKey"
+        },
+        {
+          "name": "mint",
+          "type": "publicKey"
+        },
+        {
+          "name": "tokenaccount",
+          "type": "publicKey"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "getTokenConfig",
+      "docs": [
+        "notice: Get token configuration",
+        "param: The token configuration account",
+        "return: The token configuration"
+      ],
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "tokenconfigaccount",
+          "type": "publicKey"
+        }
+      ],
+      "returns": {
+        "defined": "TokenConfig"
+      }
+    },
+    {
+      "name": "getTokenCount",
+      "docs": [
+        "notice: Get total number of tokens created",
+        "return: The count of tokens"
+      ],
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [],
+      "returns": "u256"
+    },
+    {
+      "name": "getAllTokens",
+      "docs": [
+        "notice: Get all token configuration addresses",
+        "return: Array of token configuration addresses"
+      ],
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [],
+      "returns": {
+        "vec": "publicKey"
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "TokenConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "totalSupply",
+            "type": "u64"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tokenConfigs_returns",
+      "docs": [
+        "Data structure to hold the multiple returns of function tokenConfigs"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "publicKey"
+          },
+          {
+            "name": "owner",
+            "type": "publicKey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "symbol",
+            "type": "string"
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "totalSupply",
+            "type": "u64"
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "name": "TokenCreated",
+      "fields": [
+        {
+          "name": "mint",
+          "type": "publicKey",
+          "index": true
+        },
+        {
+          "name": "owner",
+          "type": "publicKey",
+          "index": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "index": false
+        },
+        {
+          "name": "symbol",
+          "type": "string",
+          "index": false
+        },
+        {
+          "name": "decimals",
+          "type": "u8",
+          "index": false
+        },
+        {
+          "name": "initialSupply",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "TokensMinted",
+      "fields": [
+        {
+          "name": "mint",
+          "type": "publicKey",
+          "index": true
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "to",
+          "type": "publicKey",
+          "index": true
+        }
+      ]
+    },
+    {
+      "name": "TokensBurned",
+      "fields": [
+        {
+          "name": "mint",
+          "type": "publicKey",
+          "index": true
+        },
+        {
+          "name": "amount",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    }
+  ]
+}

@@ -13,7 +13,7 @@ import {
   Stack,
   Paper,
 } from '@mui/material';
-import { ForgeClient } from '../lib/forge-client';
+import { SolanaForgeClient } from '../lib/solana-web3-client';
 import { useTokens } from '../hooks/useTokens';
 
 interface CreateTokenFormProps {
@@ -65,9 +65,9 @@ const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
         hasSignAllTransactions: !!wallet.signAllTransactions,
       });
       
-      console.log('Initializing ForgeClient...');
-      const client = new ForgeClient(wallet);
-      console.log('ForgeClient initialized');
+      console.log('Initializing SolanaForgeClient...');
+      const client = new SolanaForgeClient({ wallet: { publicKey, signTransaction, signAllTransactions } });
+      console.log('SolanaForgeClient initialized');
       
       console.log('Calling createToken with params:', {
         name,
