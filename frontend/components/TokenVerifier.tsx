@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Contract, JsonRpcProvider } from 'ethers';
+import { Contract, JsonRpcProvider, formatUnits } from 'ethers';
 
 const TOKEN_FACTORY_ABI = [
   "function getCreatorTokens(address creator) public view returns (address[])",
@@ -30,6 +30,15 @@ export const TokenVerifier: React.FC = () => {
 
   const FACTORY_ADDRESS = '0x0Eded943B926951bA233CE2A6044f20A5936788e';
   const CRONOS_RPC = 'https://evm-t3.cronos.org';
+
+  const formatTokenAmount = (amount: string): string => {
+    try {
+      // Convert from wei (18 decimals) to human-readable format
+      return formatUnits(amount, 18);
+    } catch (err) {
+      return amount;
+    }
+  };
 
   const verifyTokens = async () => {
     if (!walletAddress) {
@@ -158,10 +167,10 @@ export const TokenVerifier: React.FC = () => {
                 Address: {token.address}
               </div>
               <div style={{ fontSize: '12px', opacity: 0.7 }}>
-                Total Supply: {token.totalSupply}
+                Total Supply: {formatTokenAmount(token.totalSupply)} {token.symbol}
               </div>
               <div style={{ fontSize: '12px', opacity: 0.7 }}>
-                Your Balance: {token.yourBalance}
+                Your Balance: {formatTokenAmount(token.yourBalance)} {token.symbol}
               </div>
             </div>
           ))}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserProvider } from 'ethers';
+import { BrowserProvider, formatUnits } from 'ethers';
 import { CronosTokenClient } from '../lib/cronos-client';
 
 interface CronosTokenFormProps {
@@ -237,7 +237,10 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
       });
 
       console.log('Token created at:', tokenAddress);
-      setSuccess(`Token created successfully! Address: ${tokenAddress}`);
+      const supplyInfo = formData.maxSupply > 0 
+        ? `Initial: ${formData.initialSupply}, Max: ${formData.maxSupply}`
+        : `Initial: ${formData.initialSupply}, Max: Unlimited`;
+      setSuccess(`✓ Token created! Address: ${tokenAddress} | Supply: ${supplyInfo}`);
       onSuccess?.(tokenAddress);
 
       // Reset form
@@ -318,6 +321,9 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
                   onChange={handleInputChange}
                   required
                 />
+                <small style={{ opacity: 0.6, display: 'block', marginTop: '4px' }}>
+                  Enter the number of tokens (e.g., 1000 = 1000 tokens with 18 decimals)
+                </small>
               </div>
 
               <div className="form-group">
@@ -331,6 +337,9 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
                   value={formData.maxSupply}
                   onChange={handleInputChange}
                 />
+                <small style={{ opacity: 0.6, display: 'block', marginTop: '4px' }}>
+                  Maximum tokens that can ever exist (0 for no limit)
+                </small>
               </div>
             </div>
 
