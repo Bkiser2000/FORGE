@@ -1,6 +1,7 @@
 import React, { useState, useContext } from "react";
 import { useTokens } from "../hooks/useTokens";
 import { WalletContext } from "@/pages/_app";
+import { TokenVerifier } from "./TokenVerifier";
 import {
   Card,
   CardContent,
@@ -89,6 +90,11 @@ const DashboardContent: React.FC = () => {
               <Typography variant="h5" sx={{ color: '#10b981' }}>{tokens.length > 0 ? 'Active' : 'Ready'}</Typography>
             </CardContent>
           </Card>
+        </Box>
+
+        {/* Token Verifier - Query Smart Contract */}
+        <Box sx={{ mb: 4 }}>
+          <TokenVerifier />
         </Box>
 
         {/* Tokens Table */}
