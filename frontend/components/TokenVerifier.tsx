@@ -30,7 +30,11 @@ export const TokenVerifier: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const FACTORY_ADDRESS = '0xa01cEC833f6366F9363cF2FBbE3b5f0DCB60442e';
+  const FACTORY_ADDRESS = '0x5c794C6C26c59535F00cCdD25bEB75b4f6D7F95e'; // Current factory (v3: exact supply)
+  const OLD_FACTORY_ADDRESSES = [
+    '0xa01cEC833f6366F9363cF2FBbE3b5f0DCB60442e', // v2: with decimals multiplication
+    '0x0Eded943B926951bA233CE2A6044f20A5936788e', // v1: original factory
+  ];
   const CRONOS_RPC = 'https://evm-t3.cronos.org';
 
   const formatTokenAmount = (amount: string | bigint | number, decimals: number = 18): string => {
@@ -81,19 +85,33 @@ export const TokenVerifier: React.FC = () => {
       // Create provider without wallet
       const provider = new JsonRpcProvider(CRONOS_RPC);
       
-      // Query factory
-      const factoryContract = new Contract(
-        FACTORY_ADDRESS,
-        TOKEN_FACTORY_ABI,
-        provider
-      );
+      // Query current and all previous factories for backward compatibility
+      const allFactoryAddresses = [FACTORY_ADDRESS, ...OLD_FACTORY_ADDRESSES];
+      const allTokenAddresses = new Set<string>();
+      
+      for (const factoryAddr of allFactoryAddresses) {
+        try {
+          const factoryContract = new Contract(
+            factoryAddr,
+            TOKEN_FACTORY_ABI,
+            provider
+          );
 
-      const tokenAddresses = await factoryContract.getCreatorTokens(walletAddress);
-      console.log('Found tokens:', tokenAddresses);
+          const tokenAddresses = await factoryContract.getCreatorTokens(walletAddress);
+          console.log(`Found ${tokenAddresses.length} tokens from factory ${factoryAddr}:`, tokenAddresses);
+          
+          tokenAddresses.forEach((addr: string) => allTokenAddresses.add(addr));
+        } catch (err) {
+          console.warn(`Error querying factory ${factoryAddr}:`, err);
+          // Continue to next factory even if one fails
+        }
+      }
+
+      console.log('Total unique tokens found:', Array.from(allTokenAddresses).length);
 
       // Get details for each token
       const tokens: VerifiedToken[] = [];
-      for (const tokenAddr of tokenAddresses) {
+      for (const tokenAddr of Array.from(allTokenAddresses)) {
         try {
           const tokenContract = new Contract(tokenAddr, FORGE_TOKEN_ABI, provider);
           const [name, symbol, decimals, totalSupply, balance] = await Promise.all([

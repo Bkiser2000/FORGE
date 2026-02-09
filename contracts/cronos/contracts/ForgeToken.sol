@@ -36,7 +36,7 @@ contract ForgeToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
      * @dev Constructor to create a new token
      * @param name Token name
      * @param symbol Token symbol
-     * @param initialSupply Initial supply amount (will be multiplied by 10^decimals)
+     * @param initialSupply Initial supply amount (exact amount, not multiplied by decimals)
      * @param _maxSupply Maximum supply cap (0 for unlimited)
      * @param _tokenDecimals Number of decimals for the token
      */
@@ -52,7 +52,9 @@ contract ForgeToken is ERC20, ERC20Burnable, ERC20Pausable, Ownable {
         
         _decimals = _tokenDecimals;
         maxSupply = _maxSupply;
-        uint256 initialAmount = initialSupply * 10 ** _decimals;
+        // Mint initial supply directly without multiplying by decimals
+        // Users should provide the exact amount they want as total supply
+        uint256 initialAmount = initialSupply;
         
         // Mint initial supply to creator
         _mint(msg.sender, initialAmount);

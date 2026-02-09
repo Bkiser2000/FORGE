@@ -49,7 +49,7 @@ export class CronosTokenClient {
 
   // Default to new factory address if not provided
   constructor(
-    factoryAddress: string = '0xa01cEC833f6366F9363cF2FBbE3b5f0DCB60442e',
+    factoryAddress: string = '0x5c794C6C26c59535F00cCdD25bEB75b4f6D7F95e',
     rpcUrl: string = 'https://evm-t0.cronos.org'
   ) {
     this.factoryAddress = factoryAddress;

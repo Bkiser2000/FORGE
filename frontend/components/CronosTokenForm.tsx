@@ -22,8 +22,8 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
   const [isConnecting, setIsConnecting] = useState(false);
 
   // TokenFactory contract address on Cronos Testnet
-  // Update this address if you deploy a new factory contract
-  const FACTORY_ADDRESS = '0xa01cEC833f6366F9363cF2FBbE3b5f0DCB60442e';
+  // v3: Exact supply (no 10^decimals multiplication)
+  const FACTORY_ADDRESS = '0x5c794C6C26c59535F00cCdD25bEB75b4f6D7F95e';
   const CRONOS_RPC = 'https://evm-t3.cronos.org'; // Cronos testnet
 
   useEffect(() => {
