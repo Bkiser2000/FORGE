@@ -37,86 +37,101 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   useEffect(() => {
     if (!isClient) return;
 
-    if (selectedChain === "solana") {
-      // Disconnecting MetaMask when switching to Solana
-      disconnectMetaMask();
-    } else if (selectedChain === "cronos") {
-      // Disconnecting Solana when switching to Cronos
-      if (connected) {
-        try {
-          disconnect();
-        } catch (err) {
-          console.error('Error disconnecting Solana wallet:', err);
+    const handleChainSwitch = async () => {
+      if (selectedChain === "solana") {
+        // Disconnecting MetaMask when switching to Solana
+        console.log('Chain switched to Solana, disconnecting MetaMask');
+        setMetaMaskAccount(null);
+        setAllAccounts([]);
+      } else if (selectedChain === "cronos") {
+        // Disconnecting Solana when switching to Cronos
+        console.log('Chain switched to Cronos, disconnecting Solana wallet');
+        if (connected) {
+          try {
+            await disconnect();
+            console.log('Solana wallet disconnected');
+          } catch (err) {
+            console.error('Error disconnecting Solana wallet:', err);
+          }
         }
+        // Also clear MetaMask connection to force fresh connect prompt
+        setMetaMaskAccount(null);
+        setAllAccounts([]);
       }
-    }
+    };
+
+    handleChainSwitch();
   }, [selectedChain, connected, disconnect, isClient]);
 
-  // Helper function to get MetaMask provider
+  // Helper function to get MetaMask provider specifically
   const getMetaMaskProvider = () => {
     if (typeof window === 'undefined') return null;
     
-    // First, check if window.ethereum exists and is MetaMask
-    if (window.ethereum) {
-      console.log('window.ethereum exists, isMetaMask:', window.ethereum.isMetaMask);
-      if (window.ethereum.isMetaMask) {
-        return window.ethereum;
-      }
-      
-      // Check providers array
-      if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
-        const metaMask = window.ethereum.providers.find((p: any) => {
-          console.log('Checking provider:', p.isMetaMask);
-          return p?.isMetaMask;
-        });
-        if (metaMask) {
-          console.log('Found MetaMask in providers array');
-          return metaMask;
-        }
+    console.log('[MetaMask Detection] Starting provider detection');
+    
+    // Strategy 1: Check if window.ethereum itself is MetaMask (most common case)
+    if (window.ethereum?.isMetaMask === true) {
+      console.log('[MetaMask Detection] ✓ Found MetaMask as primary provider');
+      return window.ethereum;
+    }
+    
+    // Strategy 2: Look through providers array for MetaMask specifically
+    if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+      console.log(`[MetaMask Detection] Checking ${window.ethereum.providers.length} providers in array`);
+      const metaMask = window.ethereum.providers.find((p: any) => p?.isMetaMask === true);
+      if (metaMask) {
+        console.log('[MetaMask Detection] ✓ Found MetaMask in providers array');
+        return metaMask;
       }
     }
     
-    console.log('MetaMask provider not found');
+    console.log('[MetaMask Detection] ✗ MetaMask provider not found');
     return null;
   };
 
-  // Check for MetaMask connection on mount and listen for changes
+  // Check for MetaMask connection on mount and when chain switches to Cronos
   useEffect(() => {
-    if (!isClient) return;
+    if (!isClient || selectedChain !== "cronos") return;
 
     const checkMetaMaskConnection = async () => {
-      console.log('Checking MetaMask connection...');
+      console.log('[MetaMask Check] Checking MetaMask connection on Cronos chain');
       const provider = getMetaMaskProvider();
       if (!provider) {
-        console.log('No MetaMask provider found');
+        console.log('[MetaMask Check] No MetaMask provider found, clearing account');
         setMetaMaskAccount(null);
         setAllAccounts([]);
         return;
       }
 
       try {
-        console.log('Requesting eth_accounts...');
+        console.log('[MetaMask Check] Requesting eth_accounts...');
         const accounts = await provider.request({ method: 'eth_accounts' });
-        console.log('Accounts returned:', accounts);
-        if (accounts && accounts.length > 0) {
-          console.log('Setting account:', accounts[0]);
+        console.log('[MetaMask Check] Accounts returned:', accounts);
+        if (accounts && Array.isArray(accounts) && accounts.length > 0) {
+          console.log('[MetaMask Check] Setting account:', accounts[0]);
           setMetaMaskAccount(accounts[0]);
           setAllAccounts(accounts);
+        } else {
+          console.log('[MetaMask Check] No accounts found');
+          setMetaMaskAccount(null);
+          setAllAccounts([]);
         }
       } catch (err) {
-        console.error('Error checking MetaMask connection:', err);
+        console.error('[MetaMask Check] Error checking connection:', err);
+        setMetaMaskAccount(null);
+        setAllAccounts([]);
       }
     };
 
     checkMetaMaskConnection();
 
-    // Listen for account changes
+    // Listen for account changes only when on Cronos
     const provider = getMetaMaskProvider();
     if (provider) {
-      console.log('Setting up accountsChanged listener');
-      const handleAccountsChanged = (accounts: string[]) => {
-        console.log('Accounts changed event:', accounts);
-        if (accounts && accounts.length > 0) {
+      console.log('[MetaMask Listener] Setting up accountsChanged listener for Cronos');
+      const handleAccountsChanged = (accounts: any) => {
+        console.log('[MetaMask Listener] Accounts changed event:', accounts);
+        if (accounts && Array.isArray(accounts) && accounts.length > 0) {
           setMetaMaskAccount(accounts[0]);
           setAllAccounts(accounts);
         } else {
@@ -128,11 +143,11 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
       provider.on('accountsChanged', handleAccountsChanged);
       
       return () => {
-        console.log('Removing accountsChanged listener');
+        console.log('[MetaMask Listener] Removing accountsChanged listener');
         provider.removeListener('accountsChanged', handleAccountsChanged);
       };
     }
-  }, [isClient]);
+  }, [isClient, selectedChain]);
 
   const formatWallet = (wallet: string) => {
     return `${wallet.slice(0, 6)}...${wallet.slice(-4)}`;
@@ -348,7 +363,11 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
           {/* Chain Selector */}
           <Select
             value={selectedChain || "solana"}
-            onChange={(e) => setSelectedChain?.(e.target.value as "solana" | "cronos")}
+            onChange={(e) => {
+              const newChain = e.target.value as "solana" | "cronos";
+              console.log(`User switching from ${selectedChain} to ${newChain}`);
+              setSelectedChain?.(newChain);
+            }}
             sx={{
               display: { xs: "none", sm: "flex" },
               color: "white",
