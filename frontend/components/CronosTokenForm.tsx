@@ -24,6 +24,8 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
   const CRONOS_RPC = 'https://evm-t3.cronos.org'; // Cronos testnet
 
   useEffect(() => {
+    console.log('[CronosTokenForm] Initializing with factory address:', FACTORY_ADDRESS);
+    console.log('[CronosTokenForm] Environment variable NEXT_PUBLIC_CRONOS_FACTORY_ADDRESS:', process.env.NEXT_PUBLIC_CRONOS_FACTORY_ADDRESS);
     checkWalletConnection();
   }, []);
 
