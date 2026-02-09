@@ -69,12 +69,12 @@ export class SolanaForgeClient {
       console.log('=== Starting Token Creation (Solang Raw Encoding) ===');
       console.log('Parameters:', params);
 
-      // Generate keypairs for accounts
+      // Generate keypairs for accounts - these will be passed as data, not as account signers
       const mint = Keypair.generate();
       const tokenConfig = Keypair.generate();
       const ownerTokenAccount = Keypair.generate();
 
-      console.log('Generated keypairs:');
+      console.log('Generated keypairs (as data references):');
       console.log('  Mint:', mint.publicKey.toString());
       console.log('  TokenConfig:', tokenConfig.publicKey.toString());
       console.log('  OwnerTokenAccount:', ownerTokenAccount.publicKey.toString());
@@ -168,8 +168,7 @@ export class SolanaForgeClient {
       });
 
       transaction.add(instruction);
-      // Sign with user-controlled keypairs only (not dataAccount - it's just a storage account)
-      transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
+      // Only wallet (payer) needs to sign - other accounts are just data, not transaction signers
       
       console.log('Transaction built, sending to wallet for signing...');
       const signedTx = await this.provider.wallet.signTransaction(transaction);
