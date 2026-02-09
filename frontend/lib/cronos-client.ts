@@ -6,7 +6,7 @@ const TOKEN_FACTORY_ABI = [
   "function deployedTokens(uint256) public view returns (address)",
   "function getTokenCount() public view returns (uint256)",
   "function getCreatorTokens(address creator) public view returns (address[])",
-  "event TokenDeployed(address indexed tokenAddress, string name, string indexed symbol, address indexed creator)"
+  "event TokenDeployed(address indexed tokenAddress, string name, string symbol, address indexed creator)"
 ];
 
 const FORGE_TOKEN_ABI = [
@@ -94,42 +94,66 @@ export class CronosTokenClient {
       let tokenAddress = '';
       
       if (receipt?.logs && receipt.logs.length > 0) {
+        console.log('=== Analyzing Receipt Logs ===');
         for (let i = 0; i < receipt.logs.length; i++) {
+          const log = receipt.logs[i];
+          console.log(`\n[Log ${i}]`);
+          console.log('  Address:', log.address);
+          console.log('  Topics:', log.topics);
+          console.log('  Data:', log.data);
+          
           try {
-            const log = receipt.logs[i];
             const iface = this.factoryContract?.interface;
             const parsed = iface?.parseLog(log);
-            console.log(`Log ${i}:`, parsed?.name, parsed?.args);
+            console.log('  Parsed:', parsed?.name, parsed?.args);
             
             if (parsed?.name === 'TokenDeployed') {
-              // TokenDeployed event: (address indexed tokenAddress, string name, string indexed symbol, address indexed creator)
               tokenAddress = parsed.args[0];
               console.log('✓ Found TokenDeployed event, token address:', tokenAddress);
               break;
             }
-          } catch (err) {
-            console.log(`Log ${i} parse error:`, err);
+          } catch (err: any) {
+            console.log('  Parse error:', err?.message);
           }
         }
       }
 
-      if (!tokenAddress) {
-        console.warn('⚠️  No TokenDeployed event found in logs, attempting alternative extraction');
-        // Fallback: try to extract from receipt events
-        if (receipt?.events) {
-          const deployEvent = receipt.events.find((e: any) => e.event === 'TokenDeployed');
-          if (deployEvent) {
-            tokenAddress = deployEvent.args[0];
-            console.log('✓ Found token address from receipt.events:', tokenAddress);
+      // Fallback: try to manually find the first log that looks like a contract creation
+      if (!tokenAddress && receipt?.logs && receipt.logs.length > 0) {
+        console.log('\n=== Trying Manual Log Analysis ===');
+        // Try to extract from transaction receipt contractAddress if it exists
+        if (receipt?.contractAddress) {
+          console.log('Found contractAddress in receipt:', receipt.contractAddress);
+          tokenAddress = receipt.contractAddress;
+        }
+        
+        // Also try parsing the logs with a generic approach
+        for (const log of receipt.logs) {
+          // TokenDeployed event signature: 0x2fc3848b01a71699bfb0a2d695bc7d9f1ed7f14f8f1f8c3b8f9c5f6e7a8b9d0c
+          // We can look at topics[0] which is the event signature hash
+          if (log.topics && log.topics.length > 0) {
+            console.log('Log topic[0]:', log.topics[0]);
+            // Try to decode the first indexed argument which should be the token address
+            if (log.topics.length > 1) {
+              const possibleAddress = '0x' + log.topics[1].slice(-40);
+              console.log('Possible token address from topic:', possibleAddress);
+              if (possibleAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+                tokenAddress = possibleAddress;
+                console.log('✓ Extracted address from topic:', tokenAddress);
+                break;
+              }
+            }
           }
         }
       }
 
       if (!tokenAddress) {
         console.error('✗ Failed to extract token address from transaction');
-        throw new Error('Failed to extract token address from transaction logs');
+        console.error('Receipt object:', receipt);
+        throw new Error('Failed to extract token address from transaction logs. Check console for details.');
       }
 
+      console.log('✓ Final token address:', tokenAddress);
       return tokenAddress;
     } catch (error) {
       console.error('Error creating token:', error);
