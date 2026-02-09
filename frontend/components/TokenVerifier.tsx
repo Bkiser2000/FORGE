@@ -34,7 +34,14 @@ export const TokenVerifier: React.FC = () => {
   const formatTokenAmount = (amount: string): string => {
     try {
       // Convert from wei (18 decimals) to human-readable format
-      return formatUnits(amount, 18);
+      const formatted = formatUnits(amount, 18);
+      const num = parseFloat(formatted);
+      
+      // Format with comma separators and minimal decimals
+      return num.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: num % 1 === 0 ? 0 : 2,
+      });
     } catch (err) {
       return amount;
     }
@@ -160,17 +167,17 @@ export const TokenVerifier: React.FC = () => {
                 marginBottom: '8px',
               }}
             >
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '14px' }}>
                 {token.name} ({token.symbol})
               </div>
-              <div style={{ fontSize: '12px', opacity: 0.7, fontFamily: 'monospace', marginBottom: '4px' }}>
-                Address: {token.address}
+              <div style={{ fontSize: '12px', opacity: 0.7, fontFamily: 'monospace', marginBottom: '8px', wordBreak: 'break-all' }}>
+                📍 {token.address}
               </div>
-              <div style={{ fontSize: '12px', opacity: 0.7 }}>
-                Total Supply: {formatTokenAmount(token.totalSupply)} {token.symbol}
+              <div style={{ fontSize: '13px', marginBottom: '4px' }}>
+                <span style={{ opacity: 0.7 }}>Total Supply:</span> <strong style={{ color: '#10b981' }}>{formatTokenAmount(token.totalSupply)}</strong> {token.symbol}
               </div>
-              <div style={{ fontSize: '12px', opacity: 0.7 }}>
-                Your Balance: {formatTokenAmount(token.yourBalance)} {token.symbol}
+              <div style={{ fontSize: '13px' }}>
+                <span style={{ opacity: 0.7 }}>Your Balance:</span> <strong style={{ color: '#3b82f6' }}>{formatTokenAmount(token.yourBalance)}</strong> {token.symbol}
               </div>
             </div>
           ))}
