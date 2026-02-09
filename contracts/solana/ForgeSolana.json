@@ -3,7 +3,7 @@
   "name": "ForgeSolana",
   "docs": [
     "title: Forge Solana Token Program",
-    "notice: A program to create and manage custom SPL tokens on Solana"
+    "notice: A simple test program for token configuration storage"
   ],
   "instructions": [
     {
@@ -65,6 +65,14 @@
           32
         ]
       }
+    },
+    {
+      "name": "testCall",
+      "docs": [
+        "notice: Test function - just logs that it was called"
+      ],
+      "accounts": [],
+      "args": []
     },
     {
       "name": "createToken",
@@ -144,128 +152,6 @@
         },
         {
           "name": "initialsupply",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "mintTokens",
-      "docs": [
-        "notice: Mint additional tokens",
-        "param: The account paying for the transaction",
-        "param: The token configuration account",
-        "param: The mint account",
-        "param: The token account to mint to",
-        "param: The amount to mint"
-      ],
-      "accounts": [
-        {
-          "name": "dataAccount",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": false
-        }
-      ],
-      "args": [
-        {
-          "name": "payer",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "tokenconfigaccount",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "mint",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "tokenaccount",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "amount",
-          "type": "u64"
-        }
-      ]
-    },
-    {
-      "name": "burnTokens",
-      "docs": [
-        "notice: Burn tokens",
-        "param: The account paying for the transaction",
-        "param: The token configuration account",
-        "param: The mint account",
-        "param: The token account to burn from",
-        "param: The amount to burn"
-      ],
-      "accounts": [
-        {
-          "name": "dataAccount",
-          "isMut": true,
-          "isSigner": false,
-          "isOptional": false
-        }
-      ],
-      "args": [
-        {
-          "name": "payer",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "tokenconfigaccount",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "mint",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "tokenaccount",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          }
-        },
-        {
-          "name": "amount",
           "type": "u64"
         }
       ]
@@ -480,56 +366,6 @@
         },
         {
           "name": "initialSupply",
-          "type": "u64",
-          "index": false
-        }
-      ]
-    },
-    {
-      "name": "TokensMinted",
-      "fields": [
-        {
-          "name": "mint",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          },
-          "index": true
-        },
-        {
-          "name": "amount",
-          "type": "u64",
-          "index": false
-        },
-        {
-          "name": "to",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          },
-          "index": true
-        }
-      ]
-    },
-    {
-      "name": "TokensBurned",
-      "fields": [
-        {
-          "name": "mint",
-          "type": {
-            "array": [
-              "u8",
-              32
-            ]
-          },
-          "index": true
-        },
-        {
-          "name": "amount",
           "type": "u64",
           "index": false
         }

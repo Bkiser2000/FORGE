@@ -10,7 +10,7 @@ import {
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
-const PROGRAM_ID_STRING = "78Xz6aQi6iozz4rhZqbpaGZjiQSTYw6m8Fh7bpr1WLxR";
+const PROGRAM_ID_STRING = "Fx634QQpNVFugKodwYtHagsHUz5Wx5UgokDJtijjsBtK";
 
 let PROGRAM_ID: PublicKey | null = null;
 
@@ -59,6 +59,73 @@ export class SolanaForgeClient {
   }
 
   /**
+   * Test the dispatcher - calls a simple no-op function
+   */
+  async testDispatcher(): Promise<string> {
+    if (!this.provider) throw new Error("Wallet not connected");
+
+    try {
+      console.log('=== Testing Solang Dispatcher ===');
+      
+      const data = Buffer.alloc(8);
+      let offset = 0;
+
+      // Function selector for testCall() with no parameters
+      // keccak256("testCall()") = 29e41e86...
+      // Let's use the first 8 bytes
+      const functionSelector = Buffer.from([0x29, 0xe4, 0x1e, 0x86, 0x00, 0x00, 0x00, 0x00]);
+      functionSelector.copy(data, offset);
+      offset += 8;
+      console.log('Function selector for testCall():', functionSelector.toString('hex'));
+
+      // Build instruction with ONLY the required accounts for Solang
+      const dataAccount = Keypair.generate();
+      
+      const instruction = new TransactionInstruction({
+        keys: [
+          // Required by Solang: dataAccount (writable)
+          { pubkey: dataAccount.publicKey, isSigner: false, isWritable: true },
+          // Required by Solang: clock sysvar
+          { pubkey: new PublicKey("SysvarC1ock11111111111111111111111111111111"), isSigner: false, isWritable: false },
+        ],
+        programId: getProgramId(),
+        data: data.slice(0, offset),
+      });
+
+      console.log('Test instruction created');
+
+      // Create and send transaction
+      const connection = this.getConnection();
+      const recentBlockhash = await connection.getLatestBlockhash();
+      const transaction = new Transaction({
+        recentBlockhash: recentBlockhash.blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+
+      transaction.add(instruction);
+      console.log('Transaction built, sending to wallet for signing...');
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+
+      console.log('Sending transaction...');
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      
+      console.log('✓ Test transaction sent! Signature:', signature);
+      
+      // Wait for confirmation
+      console.log('Waiting for confirmation...');
+      await connection.confirmTransaction(signature, 'confirmed');
+      console.log('✓ Test transaction confirmed!');
+
+      return signature;
+    } catch (error) {
+      console.error("=== Test Failed ===");
+      console.error('Error:', error);
+      if (error instanceof Error) {
+        console.error('Message:', error.message);
+      }
+      throw error;
+    }
+  }
    * Create a new token using Solang-compiled program with web3.js
    * Uses raw bytes32 encoding for Solana (no Ethereum ABI wrapper)
    */
@@ -79,16 +146,24 @@ export class SolanaForgeClient {
       console.log('  TokenConfig:', tokenConfig.publicKey.toString());
       console.log('  OwnerTokenAccount:', ownerTokenAccount.publicKey.toString());
 
-      // For Solang on Solana, send instruction data directly
-      // No selector - Solang on Solana may use fixed entry point
+      // For Solang on Solana, we MUST include the 8-byte function selector
+      // Solang uses: first 8 bytes of keccak256(function_signature)
+      // For createToken: keccak256("createToken(bytes32,bytes32,bytes32,bytes32,string,string,uint8,uint64)")
+      // = 209ec10320b2136062c6d6684fb1783ac684ae15e5dfd72805fc4eb206ba701c
       
       const data = Buffer.alloc(4000);
       let offset = 0;
 
-      // Encode parameters directly without function selector
-      // bytes32 parameters (32 bytes each, no padding needed)
-      // string parameters (4-byte length + UTF-8 data)
-      // numbers are little-endian
+      // Function selector - 8 bytes in big-endian (standard for dispatching)
+      const functionSelector = Buffer.from([0x20, 0x9e, 0xc1, 0x03, 0x20, 0xb2, 0x13, 0x60]);
+      functionSelector.copy(data, offset);
+      offset += 8;
+      console.log('Function selector:', functionSelector.toString('hex'));
+
+      // Encode parameters as simple concatenation
+      // Each bytes32 is just the 32 bytes
+      // Strings are: 4-byte length (u32, little-endian) + UTF-8 data
+      // Numbers are little-endian
       
       // payer (bytes32)
       this.provider.wallet.publicKey.toBuffer().copy(data, offset);

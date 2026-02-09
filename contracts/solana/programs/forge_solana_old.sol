@@ -32,6 +32,17 @@ contract ForgeSolana {
         uint64 initialSupply
     );
 
+    event TokensMinted(
+        bytes32 indexed mint,
+        uint64 amount,
+        bytes32 indexed to
+    );
+
+    event TokensBurned(
+        bytes32 indexed mint,
+        uint64 amount
+    );
+
     /// @notice Test function - just logs that it was called
     function testCall() public {
         // This is a minimal test to verify the dispatcher works
@@ -75,6 +86,56 @@ contract ForgeSolana {
 
         // Emit event
         emit TokenCreated(mint, payer, name, symbol, decimals, initialSupply);
+    }
+
+    /// @notice Mint additional tokens
+    /// @param payer The account paying for the transaction
+    /// @param tokenConfigAccount The token configuration account
+    /// @param mint The mint account
+    /// @param tokenAccount The token account to mint to
+    /// @param amount The amount to mint
+    function mintTokens(
+        bytes32 payer,
+        bytes32 tokenConfigAccount,
+        bytes32 mint,
+        bytes32 tokenAccount,
+        uint64 amount
+    ) public {
+        TokenConfig storage config = tokenConfigs[tokenConfigAccount];
+        
+        // Verify caller is the token owner
+        require(config.owner == payer, "Unauthorized");
+
+        // Update total supply
+        config.totalSupply += amount;
+
+        // Emit event
+        emit TokensMinted(mint, amount, tokenAccount);
+    }
+
+    /// @notice Burn tokens
+    /// @param payer The account paying for the transaction
+    /// @param tokenConfigAccount The token configuration account
+    /// @param mint The mint account
+    /// @param tokenAccount The token account to burn from
+    /// @param amount The amount to burn
+    function burnTokens(
+        bytes32 payer,
+        bytes32 tokenConfigAccount,
+        bytes32 mint,
+        bytes32 tokenAccount,
+        uint64 amount
+    ) public {
+        TokenConfig storage config = tokenConfigs[tokenConfigAccount];
+        
+        // Verify caller is the token owner
+        require(config.owner == payer, "Unauthorized");
+
+        // Update total supply
+        config.totalSupply -= amount;
+
+        // Emit event
+        emit TokensBurned(mint, amount);
     }
 
     /// @notice Get token configuration
