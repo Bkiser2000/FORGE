@@ -141,13 +141,13 @@ export class SolanaForgeClient {
       console.log('Instruction data (hex, first 150 chars):', finalData.toString('hex').substring(0, 150) + '...');
 
       // Build instruction with ONLY the required accounts for Solang
-      // Solang requires: dataAccount (mut) + clock sysvar
+      // Solang requires: dataAccount (mut, NOT a signer) + clock sysvar
       const dataAccount = Keypair.generate();
       
       const instruction = new TransactionInstruction({
         keys: [
-          // REQUIRED by Solang metadata: dataAccount (writable for contract storage)
-          { pubkey: dataAccount.publicKey, isSigner: true, isWritable: true },
+          // REQUIRED by Solang metadata: dataAccount (writable for contract storage, NOT a signer)
+          { pubkey: dataAccount.publicKey, isSigner: false, isWritable: true },
           // REQUIRED by Solang metadata: clock sysvar
           { pubkey: new PublicKey("SysvarC1ock11111111111111111111111111111111"), isSigner: false, isWritable: false },
         ],
@@ -168,8 +168,8 @@ export class SolanaForgeClient {
       });
 
       transaction.add(instruction);
-      // Sign with all required keypairs
-      transaction.partialSign(mint, tokenConfig, ownerTokenAccount, dataAccount);
+      // Sign with user-controlled keypairs only (not dataAccount - it's just a storage account)
+      transaction.partialSign(mint, tokenConfig, ownerTokenAccount);
       
       console.log('Transaction built, sending to wallet for signing...');
       const signedTx = await this.provider.wallet.signTransaction(transaction);
