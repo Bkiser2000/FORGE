@@ -3,10 +3,10 @@ name = "forge-solana"
 version = "0.1.0"
 
 [programs.devnet]
-forge_solana = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF"
+forge_solana = "DkkU1jrPLiK2uEnJTBicEijdyyttr2rXHQWCijtRRgUz"
 
 [programs.localnet]
-forge_solana = "BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF"
+forge_solana = "DkkU1jrPLiK2uEnJTBicEijdyyttr2rXHQWCijtRRgUz"
 
 [programs.mainnet]
 forge_solana = "11111111111111111111111111111111"

@@ -1,7 +1,7 @@
 const anchor = require("@coral-xyz/anchor");
 const { PublicKey, Connection } = require("@solana/web3.js");
 
-const PROGRAM_ID = new PublicKey("BJ81sbW7WqtvujCHJ2RbNM3NDBBbH13sEFDJ8soUzBJF");
+const PROGRAM_ID = new PublicKey("DkkU1jrPLiK2uEnJTBicEijdyyttr2rXHQWCijtRRgUz");
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
 async function fetchIDL() {

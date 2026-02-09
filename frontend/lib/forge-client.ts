@@ -110,6 +110,8 @@ const FORGE_IDL = {
 const DEVNET_RPC = "https://api.devnet.solana.com";
 
 // Use string representations directly - avoid creating multiple PublicKey objects
+// Hardcoded program ID for Solana devnet (deployed)
+// Matches NEXT_PUBLIC_SOLANA_PROGRAM_ID in .env.local
 const PROGRAM_ID_STRING = "DkkU1jrPLiK2uEnJTBicEijdyyttr2rXHQWCijtRRgUz";
 
 // Cache ONLY the program ID (which we need first)
