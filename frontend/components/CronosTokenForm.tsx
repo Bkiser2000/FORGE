@@ -156,6 +156,31 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     }));
   };
 
+  const verifyNetwork = async (): Promise<boolean> => {
+    const provider = getMetaMaskProvider();
+    if (!provider) {
+      setError('MetaMask not found');
+      return false;
+    }
+
+    try {
+      const chainId = await provider.request({ method: 'eth_chainId' });
+      console.log('Current chain ID:', chainId);
+      
+      // Cronos testnet is 0x152 (338 in decimal)
+      if (chainId !== '0x152') {
+        console.warn(`Wrong network. Current: ${chainId}, Expected: 0x152`);
+        setError(`Wrong network detected. Chain ID: ${chainId}. Please switch to Cronos Testnet (0x152).`);
+        await switchToCronosNetwork();
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Error verifying network:', err);
+      return false;
+    }
+  };
+
   const handleCreateToken = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -174,6 +199,13 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     setLoading(true);
 
     try {
+      // Verify we're on the correct network
+      const isCorrectNetwork = await verifyNetwork();
+      if (!isCorrectNetwork) {
+        setLoading(false);
+        return;
+      }
+      
       // Ensure we're on the correct network
       await switchToCronosNetwork();
 
@@ -234,6 +266,9 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
         <>
           <div className="account-info">
             <p>Connected: {account.slice(0, 6)}...{account.slice(-4)}</p>
+            <p style={{ fontSize: '12px', opacity: 0.7 }}>
+              Factory: {FACTORY_ADDRESS.slice(0, 10)}...{FACTORY_ADDRESS.slice(-8)}
+            </p>
             <button onClick={switchToCronosNetwork} className="btn-switch">
               Switch to Cronos Testnet
             </button>
