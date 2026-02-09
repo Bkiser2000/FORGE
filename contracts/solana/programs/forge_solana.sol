@@ -9,8 +9,8 @@ import "solana";
 contract ForgeSolana {
     // Token configuration storage
     struct TokenConfig {
-        address mint;
-        address owner;
+        bytes32 mint;
+        bytes32 owner;
         string name;
         string symbol;
         uint8 decimals;
@@ -19,13 +19,13 @@ contract ForgeSolana {
     }
 
     // Storage for token configurations
-    mapping(address => TokenConfig) public tokenConfigs;
-    address[] public allTokens;
+    mapping(bytes32 => TokenConfig) public tokenConfigs;
+    bytes32[] public allTokens;
 
     // Events
     event TokenCreated(
-        address indexed mint,
-        address indexed owner,
+        bytes32 indexed mint,
+        bytes32 indexed owner,
         string name,
         string symbol,
         uint8 decimals,
@@ -33,13 +33,13 @@ contract ForgeSolana {
     );
 
     event TokensMinted(
-        address indexed mint,
+        bytes32 indexed mint,
         uint64 amount,
-        address indexed to
+        bytes32 indexed to
     );
 
     event TokensBurned(
-        address indexed mint,
+        bytes32 indexed mint,
         uint64 amount
     );
 
@@ -53,10 +53,10 @@ contract ForgeSolana {
     /// @param decimals The number of decimals
     /// @param initialSupply The initial supply amount
     function createToken(
-        address payer,
-        address tokenConfigAccount,
-        address mint,
-        address ownerTokenAccount,
+        bytes32 payer,
+        bytes32 tokenConfigAccount,
+        bytes32 mint,
+        bytes32 ownerTokenAccount,
         string memory name,
         string memory symbol,
         uint8 decimals,
@@ -90,10 +90,10 @@ contract ForgeSolana {
     /// @param tokenAccount The token account to mint to
     /// @param amount The amount to mint
     function mintTokens(
-        address payer,
-        address tokenConfigAccount,
-        address mint,
-        address tokenAccount,
+        bytes32 payer,
+        bytes32 tokenConfigAccount,
+        bytes32 mint,
+        bytes32 tokenAccount,
         uint64 amount
     ) public {
         TokenConfig storage config = tokenConfigs[tokenConfigAccount];
@@ -115,10 +115,10 @@ contract ForgeSolana {
     /// @param tokenAccount The token account to burn from
     /// @param amount The amount to burn
     function burnTokens(
-        address payer,
-        address tokenConfigAccount,
-        address mint,
-        address tokenAccount,
+        bytes32 payer,
+        bytes32 tokenConfigAccount,
+        bytes32 mint,
+        bytes32 tokenAccount,
         uint64 amount
     ) public {
         TokenConfig storage config = tokenConfigs[tokenConfigAccount];
@@ -136,7 +136,7 @@ contract ForgeSolana {
     /// @notice Get token configuration
     /// @param tokenConfigAccount The token configuration account
     /// @return The token configuration
-    function getTokenConfig(address tokenConfigAccount) 
+    function getTokenConfig(bytes32 tokenConfigAccount) 
         public 
         view 
         returns (TokenConfig memory) 
@@ -152,7 +152,7 @@ contract ForgeSolana {
 
     /// @notice Get all token configuration addresses
     /// @return Array of token configuration addresses
-    function getAllTokens() public view returns (address[] memory) {
+    function getAllTokens() public view returns (bytes32[] memory) {
         return allTokens;
     }
 }

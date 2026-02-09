@@ -31,7 +31,12 @@
       "args": [
         {
           "name": "arg0",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ],
       "returns": {
@@ -54,7 +59,12 @@
           "type": "u256"
         }
       ],
-      "returns": "publicKey"
+      "returns": {
+        "array": [
+          "u8",
+          32
+        ]
+      }
     },
     {
       "name": "createToken",
@@ -86,19 +96,39 @@
       "args": [
         {
           "name": "payer",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "tokenconfigaccount",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "mint",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "ownertokenaccount",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "name",
@@ -139,19 +169,39 @@
       "args": [
         {
           "name": "payer",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "tokenconfigaccount",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "mint",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "tokenaccount",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "amount",
@@ -180,19 +230,39 @@
       "args": [
         {
           "name": "payer",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "tokenconfigaccount",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "mint",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "tokenaccount",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "amount",
@@ -218,7 +288,12 @@
       "args": [
         {
           "name": "tokenconfigaccount",
-          "type": "publicKey"
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         }
       ],
       "returns": {
@@ -258,7 +333,12 @@
       ],
       "args": [],
       "returns": {
-        "vec": "publicKey"
+        "vec": {
+          "array": [
+            "u8",
+            32
+          ]
+        }
       }
     }
   ],
@@ -270,11 +350,21 @@
         "fields": [
           {
             "name": "mint",
-            "type": "publicKey"
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
             "name": "owner",
-            "type": "publicKey"
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
             "name": "name",
@@ -309,11 +399,21 @@
         "fields": [
           {
             "name": "mint",
-            "type": "publicKey"
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
             "name": "owner",
-            "type": "publicKey"
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
             "name": "name",
@@ -345,12 +445,22 @@
       "fields": [
         {
           "name": "mint",
-          "type": "publicKey",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
           "index": true
         },
         {
           "name": "owner",
-          "type": "publicKey",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
           "index": true
         },
         {
@@ -380,7 +490,12 @@
       "fields": [
         {
           "name": "mint",
-          "type": "publicKey",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
           "index": true
         },
         {
@@ -390,7 +505,12 @@
         },
         {
           "name": "to",
-          "type": "publicKey",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
           "index": true
         }
       ]
@@ -400,7 +520,12 @@
       "fields": [
         {
           "name": "mint",
-          "type": "publicKey",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
           "index": true
         },
         {

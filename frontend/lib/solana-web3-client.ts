@@ -11,7 +11,7 @@ import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { AbiCoder } from 'ethers';
 
 const DEVNET_RPC = "https://api.devnet.solana.com";
-const PROGRAM_ID_STRING = "9FaWqbx7CXFPmp2SQbjiJqcGA13BggABJLyL7LS7xKZn";
+const PROGRAM_ID_STRING = "78Xz6aQi6iozz4rhZqbpaGZjiQSTYw6m8Fh7bpr1WLxR";
 
 let PROGRAM_ID: PublicKey | null = null;
 
@@ -86,15 +86,28 @@ export class SolanaForgeClient {
       // Use ethers AbiCoder to encode the function parameters in Solidity ABI format
       const abiCoder = AbiCoder.defaultAbiCoder();
       
+      // Solana public keys are 32 bytes (bytes32 in Solidity), not 20-byte Ethereum addresses
+      // Convert PublicKey buffers to bytes32 format (0x-prefixed hex)
+      const payerBytes32 = '0x' + this.provider.wallet.publicKey.toBuffer().toString('hex');
+      const tokenConfigBytes32 = '0x' + tokenConfig.publicKey.toBuffer().toString('hex');
+      const mintBytes32 = '0x' + mint.publicKey.toBuffer().toString('hex');
+      const ownerTokenAccountBytes32 = '0x' + ownerTokenAccount.publicKey.toBuffer().toString('hex');
+      
+      console.log('Encoding with bytes32 format:');
+      console.log('  Payer:', payerBytes32);
+      console.log('  TokenConfig:', tokenConfigBytes32);
+      console.log('  Mint:', mintBytes32);
+      console.log('  OwnerTokenAccount:', ownerTokenAccountBytes32);
+      
       // Encode parameters according to Solidity function signature:
-      // function createToken(address, address, address, address, string, string, uint8, uint64)
+      // Using bytes32 instead of address since Solana keys are 32 bytes
       const encodedParams = abiCoder.encode(
-        ['address', 'address', 'address', 'address', 'string', 'string', 'uint8', 'uint64'],
+        ['bytes32', 'bytes32', 'bytes32', 'bytes32', 'string', 'string', 'uint8', 'uint64'],
         [
-          '0x' + this.provider.wallet.publicKey.toBuffer().toString('hex'),
-          '0x' + tokenConfig.publicKey.toBuffer().toString('hex'),
-          '0x' + mint.publicKey.toBuffer().toString('hex'),
-          '0x' + ownerTokenAccount.publicKey.toBuffer().toString('hex'),
+          payerBytes32,
+          tokenConfigBytes32,
+          mintBytes32,
+          ownerTokenAccountBytes32,
           params.name,
           params.symbol,
           params.decimals,
