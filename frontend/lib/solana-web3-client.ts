@@ -126,6 +126,8 @@ export class SolanaForgeClient {
       throw error;
     }
   }
+
+  /**
    * Create a new token using Solang-compiled program with web3.js
    * Uses raw bytes32 encoding for Solana (no Ethereum ABI wrapper)
    */
