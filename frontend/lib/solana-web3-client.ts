@@ -59,15 +59,47 @@ export class SolanaForgeClient {
   }
 
   /**
-   * Test 1: Send empty instruction data
+   * Test 1: Send empty instruction data with account creation
    */
   async testEmptyData(): Promise<string> {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      console.log('=== Test 1: Empty Instruction Data ===');
+      console.log('=== Test 1: Empty Instruction Data with Account Creation ===');
       
+      const connection = this.getConnection();
       const dataAccount = Keypair.generate();
+      
+      // Create the data account first
+      const balance = await connection.getBalance(dataAccount.publicKey);
+      console.log('Data account balance:', balance);
+      
+      if (balance === 0) {
+        console.log('Creating data account...');
+        const createAccountTx = new Transaction({
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+          feePayer: this.provider.wallet.publicKey,
+        });
+        
+        createAccountTx.add(
+          SystemProgram.createAccount({
+            fromPubkey: this.provider.wallet.publicKey,
+            newAccountPubkey: dataAccount.publicKey,
+            lamports: await connection.getMinimumBalanceForRentExemption(1024),
+            space: 1024,
+            programId: getProgramId(),
+          })
+        );
+        
+        createAccountTx.partialSign(dataAccount);
+        const createSig = await this.provider.wallet.signTransaction(createAccountTx);
+        const sig1 = await connection.sendRawTransaction(createSig.serialize());
+        console.log('Account creation tx:', sig1);
+        await connection.confirmTransaction(sig1, 'confirmed');
+        console.log('✓ Account created');
+      }
+      
+      // Now call the program
       const instruction = new TransactionInstruction({
         keys: [
           { pubkey: dataAccount.publicKey, isSigner: false, isWritable: true },
@@ -77,7 +109,6 @@ export class SolanaForgeClient {
         data: Buffer.alloc(0), // Empty data
       });
 
-      const connection = this.getConnection();
       const recentBlockhash = await connection.getLatestBlockhash();
       const transaction = new Transaction({
         recentBlockhash: recentBlockhash.blockhash,
@@ -99,15 +130,47 @@ export class SolanaForgeClient {
   }
 
   /**
-   * Test 2: Send single zero byte
+   * Test 2: Single byte with account creation
    */
   async testSingleByte(): Promise<string> {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      console.log('=== Test 2: Single Zero Byte ===');
+      console.log('=== Test 2: Single Zero Byte with Account Creation ===');
       
+      const connection = this.getConnection();
       const dataAccount = Keypair.generate();
+      
+      // Create the data account first
+      const balance = await connection.getBalance(dataAccount.publicKey);
+      console.log('Data account balance:', balance);
+      
+      if (balance === 0) {
+        console.log('Creating data account...');
+        const createAccountTx = new Transaction({
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+          feePayer: this.provider.wallet.publicKey,
+        });
+        
+        createAccountTx.add(
+          SystemProgram.createAccount({
+            fromPubkey: this.provider.wallet.publicKey,
+            newAccountPubkey: dataAccount.publicKey,
+            lamports: await connection.getMinimumBalanceForRentExemption(1024),
+            space: 1024,
+            programId: getProgramId(),
+          })
+        );
+        
+        createAccountTx.partialSign(dataAccount);
+        const createSig = await this.provider.wallet.signTransaction(createAccountTx);
+        const sig1 = await connection.sendRawTransaction(createSig.serialize());
+        console.log('Account creation tx:', sig1);
+        await connection.confirmTransaction(sig1, 'confirmed');
+        console.log('✓ Account created');
+      }
+      
+      // Now call the program
       const instruction = new TransactionInstruction({
         keys: [
           { pubkey: dataAccount.publicKey, isSigner: false, isWritable: true },
@@ -117,7 +180,6 @@ export class SolanaForgeClient {
         data: Buffer.from([0x00]), // Single byte
       });
 
-      const connection = this.getConnection();
       const recentBlockhash = await connection.getLatestBlockhash();
       const transaction = new Transaction({
         recentBlockhash: recentBlockhash.blockhash,
