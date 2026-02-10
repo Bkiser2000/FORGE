@@ -59,42 +59,24 @@ export class SolanaForgeClient {
   }
 
   /**
-   * Test the dispatcher - calls a simple no-op function
+   * Test 1: Send empty instruction data
    */
-  async testDispatcher(): Promise<string> {
+  async testEmptyData(): Promise<string> {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      console.log('=== Testing Solang Dispatcher ===');
+      console.log('=== Test 1: Empty Instruction Data ===');
       
-      const data = Buffer.alloc(8);
-      let offset = 0;
-
-      // Function selector for testCall() with no parameters
-      // keccak256("testCall()") = 29e41e86...
-      // Let's use the first 8 bytes
-      const functionSelector = Buffer.from([0x29, 0xe4, 0x1e, 0x86, 0x00, 0x00, 0x00, 0x00]);
-      functionSelector.copy(data, offset);
-      offset += 8;
-      console.log('Function selector for testCall():', functionSelector.toString('hex'));
-
-      // Build instruction with ONLY the required accounts for Solang
       const dataAccount = Keypair.generate();
-      
       const instruction = new TransactionInstruction({
         keys: [
-          // Required by Solang: dataAccount (writable)
           { pubkey: dataAccount.publicKey, isSigner: false, isWritable: true },
-          // Required by Solang: clock sysvar
           { pubkey: new PublicKey("SysvarC1ock11111111111111111111111111111111"), isSigner: false, isWritable: false },
         ],
         programId: getProgramId(),
-        data: data.slice(0, offset),
+        data: Buffer.alloc(0), // Empty data
       });
 
-      console.log('Test instruction created');
-
-      // Create and send transaction
       const connection = this.getConnection();
       const recentBlockhash = await connection.getLatestBlockhash();
       const transaction = new Transaction({
@@ -103,26 +85,55 @@ export class SolanaForgeClient {
       });
 
       transaction.add(instruction);
-      console.log('Transaction built, sending to wallet for signing...');
       const signedTx = await this.provider.wallet.signTransaction(transaction);
-
-      console.log('Sending transaction...');
       const signature = await connection.sendRawTransaction(signedTx.serialize());
       
-      console.log('✓ Test transaction sent! Signature:', signature);
-      
-      // Wait for confirmation
-      console.log('Waiting for confirmation...');
+      console.log('Transaction sent:', signature);
       await connection.confirmTransaction(signature, 'confirmed');
-      console.log('✓ Test transaction confirmed!');
-
+      console.log('✓ Empty data test passed!');
       return signature;
     } catch (error) {
-      console.error("=== Test Failed ===");
-      console.error('Error:', error);
-      if (error instanceof Error) {
-        console.error('Message:', error.message);
-      }
+      console.error('Empty data test failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Test 2: Send single zero byte
+   */
+  async testSingleByte(): Promise<string> {
+    if (!this.provider) throw new Error("Wallet not connected");
+
+    try {
+      console.log('=== Test 2: Single Zero Byte ===');
+      
+      const dataAccount = Keypair.generate();
+      const instruction = new TransactionInstruction({
+        keys: [
+          { pubkey: dataAccount.publicKey, isSigner: false, isWritable: true },
+          { pubkey: new PublicKey("SysvarC1ock11111111111111111111111111111111"), isSigner: false, isWritable: false },
+        ],
+        programId: getProgramId(),
+        data: Buffer.from([0x00]), // Single byte
+      });
+
+      const connection = this.getConnection();
+      const recentBlockhash = await connection.getLatestBlockhash();
+      const transaction = new Transaction({
+        recentBlockhash: recentBlockhash.blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+
+      transaction.add(instruction);
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      
+      console.log('Transaction sent:', signature);
+      await connection.confirmTransaction(signature, 'confirmed');
+      console.log('✓ Single byte test passed!');
+      return signature;
+    } catch (error) {
+      console.error('Single byte test failed:', error);
       throw error;
     }
   }

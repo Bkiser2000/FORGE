@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { SolanaForgeClient } from '../lib/solana-web3-client';
 import { useTokens } from '../hooks/useTokens';
+import SolangTestPanel from './SolangTestPanel';
 
 interface CreateTokenFormProps {
   onSuccess?: (txSignature: string) => void;
@@ -141,6 +142,11 @@ const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
           Deploy a custom token on Solana devnet in minutes
         </Typography>
       </Box>
+
+      {/* Test Panel - Hidden by default, shown for debugging */}
+      {process.env.NODE_ENV === 'development' && (
+        <SolangTestPanel />
+      )}
 
       {/* Main Card */}
       <Card
