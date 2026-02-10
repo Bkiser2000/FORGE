@@ -485,6 +485,112 @@ export class SolanaForgeClient {
     }
   }
 
+  /**
+   * Test 5: Minimal test - No accounts at all, just selector
+   */
+  async testMinimalNoAccounts(): Promise<string> {
+    if (!this.provider) throw new Error("Wallet not connected");
+
+    try {
+      console.log('=== Test 5: Minimal - No Accounts, Just Selector ===');
+      
+      const connection = this.getConnection();
+      
+      // Try 8-byte selector with NO accounts
+      const selector = Buffer.from([0xb7, 0xf0, 0x58, 0x36, 0xc7, 0xe1, 0x32, 0x9a]);
+      
+      const instruction = new TransactionInstruction({
+        keys: [], // NO ACCOUNTS
+        programId: getProgramId(),
+        data: selector,
+      });
+
+      const recentBlockhash = await connection.getLatestBlockhash();
+      const transaction = new Transaction({
+        recentBlockhash: recentBlockhash.blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+
+      transaction.add(instruction);
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      
+      console.log('Transaction sent:', signature);
+      await connection.confirmTransaction(signature, 'confirmed');
+      console.log('✓ No accounts test passed!');
+      return signature;
+    } catch (error) {
+      console.error('No accounts test failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Test 6: Only selector, no clock sysvar
+   */
+  async testOnlySelector(): Promise<string> {
+    if (!this.provider) throw new Error("Wallet not connected");
+
+    try {
+      console.log('=== Test 6: Only Selector, No Clock ===');
+      
+      const connection = this.getConnection();
+      const dataAccount = Keypair.generate();
+      
+      // Create account
+      console.log('Creating data account...');
+      const createAccountTx = new Transaction({
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+      
+      createAccountTx.add(
+        SystemProgram.createAccount({
+          fromPubkey: this.provider.wallet.publicKey,
+          newAccountPubkey: dataAccount.publicKey,
+          lamports: await connection.getMinimumBalanceForRentExemption(1024),
+          space: 1024,
+          programId: getProgramId(),
+        })
+      );
+      
+      createAccountTx.partialSign(dataAccount);
+      const createSig = await this.provider.wallet.signTransaction(createAccountTx);
+      const sig1 = await connection.sendRawTransaction(createSig.serialize());
+      await connection.confirmTransaction(sig1, 'confirmed');
+      
+      // Call with ONLY the selector and NO clock sysvar
+      const selector = Buffer.from([0xb7, 0xf0, 0x58, 0x36, 0xc7, 0xe1, 0x32, 0x9a]);
+      
+      const instruction = new TransactionInstruction({
+        keys: [
+          { pubkey: dataAccount.publicKey, isSigner: false, isWritable: true },
+          // NO clock sysvar - maybe it's optional?
+        ],
+        programId: getProgramId(),
+        data: selector,
+      });
+
+      const recentBlockhash = await connection.getLatestBlockhash();
+      const transaction = new Transaction({
+        recentBlockhash: recentBlockhash.blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+
+      transaction.add(instruction);
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      
+      console.log('Transaction sent:', signature);
+      await connection.confirmTransaction(signature, 'confirmed');
+      console.log('✓ Only selector test passed!');
+      return signature;
+    } catch (error) {
+      console.error('Only selector test failed:', error);
+      throw error;
+    }
+  }
+
   async getTokenCount(): Promise<number> {
     // This would require reading program-derived accounts
     // For now, returning 0 as placeholder

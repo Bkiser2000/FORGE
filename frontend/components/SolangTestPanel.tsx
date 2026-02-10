@@ -118,6 +118,30 @@ const SolangTestPanel: React.FC = () => {
             Test 4: Constructor (new)
           </Button>
 
+          <Button
+            variant="contained"
+            onClick={() => runTest('minimalNoAccounts', function(this: SolanaForgeClient) { 
+              return this.testMinimalNoAccounts(); 
+            })}
+            disabled={loading || !connected}
+            sx={{ background: 'rgba(255, 152, 0, 0.2)', color: '#ff9800', border: '1px solid #ff9800' }}
+          >
+            {loading ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+            Test 5: No Accounts
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={() => runTest('onlySelector', function(this: SolanaForgeClient) { 
+              return this.testOnlySelector(); 
+            })}
+            disabled={loading || !connected}
+            sx={{ background: 'rgba(255, 152, 0, 0.2)', color: '#ff9800', border: '1px solid #ff9800' }}
+          >
+            {loading ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+            Test 6: No Clock Sysvar
+          </Button>
+
           <Divider sx={{ my: 1 }} />
 
           {Object.entries(results).map(([testName, result]) => (
