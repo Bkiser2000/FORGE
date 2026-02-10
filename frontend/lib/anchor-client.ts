@@ -96,7 +96,6 @@ export class AnchorForgeClient {
           tokenConfig: tokenConfig.publicKey,
           ownerTokenAccount: ownerAta,
           tokenProgram: TOKEN_PROGRAM_ID,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY,
         })
