@@ -83,6 +83,26 @@ export class AnchorForgeClient {
         this.provider!.wallet.publicKey
       );
 
+      console.log('Generated keypairs:');
+      console.log('  mint:', mint.publicKey.toString());
+      console.log('  tokenConfig:', tokenConfig.publicKey.toString());
+      console.log('  ownerAta:', ownerAta.toString());
+      console.log('  payer:', this.provider!.wallet.publicKey.toString());
+
+      const accountsObj = {
+        payer: this.provider!.wallet.publicKey,
+        mint: mint.publicKey,
+        tokenConfig: tokenConfig.publicKey,
+        ownerTokenAccount: ownerAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      };
+
+      console.log('Accounts to send:');
+      Object.entries(accountsObj).forEach(([key, value]) => {
+        console.log(`  ${key}: ${value.toString()}`);
+      });
+
       const tx = await this.program!.methods
         .createToken(
           params.name,
@@ -90,15 +110,7 @@ export class AnchorForgeClient {
           params.decimals,
           new BN(params.initialSupply)
         )
-        .accounts({
-          payer: this.provider!.wallet.publicKey,
-          mint: mint.publicKey,
-          tokenConfig: tokenConfig.publicKey,
-          ownerTokenAccount: ownerAta,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-          rent: SYSVAR_RENT_PUBKEY,
-        })
+        .accounts(accountsObj)
         .signers([mint, tokenConfig])
         .rpc();
 
