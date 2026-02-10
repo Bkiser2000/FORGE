@@ -13,9 +13,8 @@ import {
   Stack,
   Paper,
 } from '@mui/material';
-import { SolanaForgeClient } from '../lib/solana-web3-client';
+import AnchorForgeClient from '../lib/anchor-client';
 import { useTokens } from '../hooks/useTokens';
-import SolangTestPanel from './SolangTestPanel';
 
 interface CreateTokenFormProps {
   onSuccess?: (txSignature: string) => void;
@@ -54,21 +53,18 @@ const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
     setMessage(null);
 
     try {
-      console.log('Creating wallet object...');
-      const wallet = { 
-        publicKey, 
-        signTransaction,
-        signAllTransactions,
+      console.log('Creating wallet provider...');
+      const provider = { 
+        wallet: { 
+          publicKey, 
+          signTransaction,
+          signAllTransactions,
+        }
       };
-      console.log('Wallet object created:', { 
-        hasPublicKey: !!wallet.publicKey,
-        hasSignTransaction: !!wallet.signTransaction,
-        hasSignAllTransactions: !!wallet.signAllTransactions,
-      });
       
-      console.log('Initializing SolanaForgeClient...');
-      const client = new SolanaForgeClient({ wallet: { publicKey, signTransaction, signAllTransactions } });
-      console.log('SolanaForgeClient initialized');
+      console.log('Initializing AnchorForgeClient...');
+      const client = new AnchorForgeClient(provider);
+      console.log('AnchorForgeClient initialized');
       
       console.log('Calling createToken with params:', {
         name,
@@ -142,11 +138,6 @@ const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
           Deploy a custom token on Solana devnet in minutes
         </Typography>
       </Box>
-
-      {/* Test Panel - Hidden by default, shown for debugging */}
-      {process.env.NODE_ENV === 'development' && (
-        <SolangTestPanel />
-      )}
 
       {/* Main Card */}
       <Card
