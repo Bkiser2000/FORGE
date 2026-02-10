@@ -201,13 +201,13 @@ export class SolanaForgeClient {
   }
 
   /**
-   * Test 3: Try with minimal selector (first 4 bytes only, Anchor-style)
+   * Test 3: Try with correct 8-byte Solang selector
    */
   async testAnchorSelector(): Promise<string> {
     if (!this.provider) throw new Error("Wallet not connected");
 
     try {
-      console.log('=== Test 3: Anchor-style 4-byte Selector ===');
+      console.log('=== Test 3: Solang 8-byte Selector ===');
       
       const connection = this.getConnection();
       const dataAccount = Keypair.generate();
@@ -239,9 +239,9 @@ export class SolanaForgeClient {
         await connection.confirmTransaction(sig1, 'confirmed');
       }
       
-      // Try 4-byte selector (Anchor style, first 4 bytes of 8-byte keccak)
-      // For testCall(): first 4 bytes of keccak256("testCall()") 
-      const selector = Buffer.from([0x29, 0xe4, 0x1e, 0x86]);
+      // Try 8-byte selector (Solang standard)
+      // For testCall(): keccak256("testCall()") first 8 bytes = b7f05836c7e1329a
+      const selector = Buffer.from([0xb7, 0xf0, 0x58, 0x36, 0xc7, 0xe1, 0x32, 0x9a]);
       
       const instruction = new TransactionInstruction({
         keys: [
@@ -307,9 +307,10 @@ export class SolanaForgeClient {
       console.log('Account creation tx:', sig1);
       await connection.confirmTransaction(sig1, 'confirmed');
       
-      // Call constructor: keccak256("new()") first 4 bytes Anchor style
-      // Calculated: 0x10e10ccb (4 bytes)
-      const constructorSelector = Buffer.from([0x10, 0xe1, 0x0c, 0xcb]);
+      // Call constructor: correct selector for new()
+      // Keccak256("new()") = cdbf608d9e367ea36fd3859b6a0cad8d9f13d0c440fe7f78adcd83524eab18fa
+      // First 8 bytes: cdbf608d9e367ea3
+      const constructorSelector = Buffer.from([0xcd, 0xbf, 0x60, 0x8d, 0x9e, 0x36, 0x7e, 0xa3]);
       
       const instruction = new TransactionInstruction({
         keys: [

@@ -103,7 +103,7 @@ const SolangTestPanel: React.FC = () => {
             sx={{ background: 'rgba(255, 193, 7, 0.2)', color: '#ffc107', border: '1px solid #ffc107' }}
           >
             {loading ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
-            Test 3: Anchor Selector (4-byte)
+            Test 3: Solang Selector (8-byte)
           </Button>
 
           <Button
