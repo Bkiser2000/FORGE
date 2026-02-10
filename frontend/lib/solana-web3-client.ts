@@ -273,6 +273,73 @@ export class SolanaForgeClient {
   }
 
   /**
+   * Test 4: Call contract constructor (new) first
+   */
+  async testConstructor(): Promise<string> {
+    if (!this.provider) throw new Error("Wallet not connected");
+
+    try {
+      console.log('=== Test 4: Contract Constructor (new) ===');
+      
+      const connection = this.getConnection();
+      const dataAccount = Keypair.generate();
+      
+      // Create the data account first
+      console.log('Creating data account...');
+      const createAccountTx = new Transaction({
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+      
+      createAccountTx.add(
+        SystemProgram.createAccount({
+          fromPubkey: this.provider.wallet.publicKey,
+          newAccountPubkey: dataAccount.publicKey,
+          lamports: await connection.getMinimumBalanceForRentExemption(1024),
+          space: 1024,
+          programId: getProgramId(),
+        })
+      );
+      
+      createAccountTx.partialSign(dataAccount);
+      const createSig = await this.provider.wallet.signTransaction(createAccountTx);
+      const sig1 = await connection.sendRawTransaction(createSig.serialize());
+      console.log('Account creation tx:', sig1);
+      await connection.confirmTransaction(sig1, 'confirmed');
+      
+      // Call constructor: keccak256("new()") first 4 bytes Anchor style
+      // Calculated: 0x10e10ccb (4 bytes)
+      const constructorSelector = Buffer.from([0x10, 0xe1, 0x0c, 0xcb]);
+      
+      const instruction = new TransactionInstruction({
+        keys: [
+          { pubkey: dataAccount.publicKey, isSigner: false, isWritable: true },
+        ],
+        programId: getProgramId(),
+        data: constructorSelector,
+      });
+
+      const recentBlockhash = await connection.getLatestBlockhash();
+      const transaction = new Transaction({
+        recentBlockhash: recentBlockhash.blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+
+      transaction.add(instruction);
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      
+      console.log('Transaction sent:', signature);
+      await connection.confirmTransaction(signature, 'confirmed');
+      console.log('✓ Constructor test passed!');
+      return signature;
+    } catch (error) {
+      console.error('Constructor test failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create a new token using Solang-compiled program with web3.js
    * Uses raw bytes32 encoding for Solana (no Ethereum ABI wrapper)
    */

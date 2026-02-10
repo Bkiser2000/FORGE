@@ -106,6 +106,18 @@ const SolangTestPanel: React.FC = () => {
             Test 3: Anchor Selector (4-byte)
           </Button>
 
+          <Button
+            variant="contained"
+            onClick={() => runTest('constructor', function(this: SolanaForgeClient) { 
+              return this.testConstructor(); 
+            })}
+            disabled={loading || !connected}
+            sx={{ background: 'rgba(255, 193, 7, 0.2)', color: '#ffc107', border: '1px solid #ffc107' }}
+          >
+            {loading ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+            Test 4: Constructor (new)
+          </Button>
+
           <Divider sx={{ my: 1 }} />
 
           {Object.entries(results).map(([testName, result]) => (
