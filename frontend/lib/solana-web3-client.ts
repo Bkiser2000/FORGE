@@ -201,6 +201,78 @@ export class SolanaForgeClient {
   }
 
   /**
+   * Test 3: Try with minimal selector (first 4 bytes only, Anchor-style)
+   */
+  async testAnchorSelector(): Promise<string> {
+    if (!this.provider) throw new Error("Wallet not connected");
+
+    try {
+      console.log('=== Test 3: Anchor-style 4-byte Selector ===');
+      
+      const connection = this.getConnection();
+      const dataAccount = Keypair.generate();
+      
+      // Create the data account first
+      const balance = await connection.getBalance(dataAccount.publicKey);
+      
+      if (balance === 0) {
+        console.log('Creating data account...');
+        const createAccountTx = new Transaction({
+          recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+          feePayer: this.provider.wallet.publicKey,
+        });
+        
+        createAccountTx.add(
+          SystemProgram.createAccount({
+            fromPubkey: this.provider.wallet.publicKey,
+            newAccountPubkey: dataAccount.publicKey,
+            lamports: await connection.getMinimumBalanceForRentExemption(1024),
+            space: 1024,
+            programId: getProgramId(),
+          })
+        );
+        
+        createAccountTx.partialSign(dataAccount);
+        const createSig = await this.provider.wallet.signTransaction(createAccountTx);
+        const sig1 = await connection.sendRawTransaction(createSig.serialize());
+        console.log('Account creation tx:', sig1);
+        await connection.confirmTransaction(sig1, 'confirmed');
+      }
+      
+      // Try 4-byte selector (Anchor style, first 4 bytes of 8-byte keccak)
+      // For testCall(): first 4 bytes of keccak256("testCall()") 
+      const selector = Buffer.from([0x29, 0xe4, 0x1e, 0x86]);
+      
+      const instruction = new TransactionInstruction({
+        keys: [
+          { pubkey: dataAccount.publicKey, isSigner: false, isWritable: true },
+          { pubkey: new PublicKey("SysvarC1ock11111111111111111111111111111111"), isSigner: false, isWritable: false },
+        ],
+        programId: getProgramId(),
+        data: selector,
+      });
+
+      const recentBlockhash = await connection.getLatestBlockhash();
+      const transaction = new Transaction({
+        recentBlockhash: recentBlockhash.blockhash,
+        feePayer: this.provider.wallet.publicKey,
+      });
+
+      transaction.add(instruction);
+      const signedTx = await this.provider.wallet.signTransaction(transaction);
+      const signature = await connection.sendRawTransaction(signedTx.serialize());
+      
+      console.log('Transaction sent:', signature);
+      await connection.confirmTransaction(signature, 'confirmed');
+      console.log('✓ Anchor selector test passed!');
+      return signature;
+    } catch (error) {
+      console.error('Anchor selector test failed:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create a new token using Solang-compiled program with web3.js
    * Uses raw bytes32 encoding for Solana (no Ethereum ABI wrapper)
    */
