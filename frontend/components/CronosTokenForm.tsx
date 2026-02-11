@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { BrowserProvider, formatUnits } from 'ethers';
 import { CronosTokenClient } from '../lib/cronos-client';
+import { WalletContext } from '@/pages/_app';
 
 interface CronosTokenFormProps {
   onSuccess?: (tokenAddress: string) => void;
 }
 
 export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) => {
+  const walletContext = useContext(WalletContext);
+  const { connectedWallet } = walletContext || {};
+  
   const [formData, setFormData] = useState({
     name: '',
     symbol: '',
@@ -28,8 +32,15 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
 
   useEffect(() => {
     console.log('[CronosTokenForm] Initializing with factory address:', FACTORY_ADDRESS);
-    checkWalletConnection();
-  }, []);
+    // Use the wallet from context if available
+    if (connectedWallet) {
+      console.log('[CronosTokenForm] Using connected wallet from context:', connectedWallet);
+      setAccount(connectedWallet);
+    } else {
+      // Otherwise check for existing connection
+      checkWalletConnection();
+    }
+  }, [connectedWallet]);
 
   // Detect and use only MetaMask
   const getMetaMaskProvider = () => {

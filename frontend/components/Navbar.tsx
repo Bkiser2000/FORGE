@@ -34,7 +34,7 @@ interface DetectedWallet {
 
 const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const walletContext = useContext(WalletContext);
-  const { selectedChain, setSelectedChain } = walletContext || {};
+  const { selectedChain, setSelectedChain, setConnectedWallet } = walletContext || {};
   const { connected, disconnect } = useWallet();
   const [isClient, setIsClient] = useState(false);
   const [metaMaskAccount, setMetaMaskAccount] = useState<string | null>(null);
@@ -323,11 +323,19 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
         console.log(`[${wallet.name}] ✓ Setting account to:`, accounts[0]);
         setMetaMaskAccount(accounts[0]);
         setAllAccounts(accounts);
+        // Update the global wallet context so CronosTokenForm can use it
+        if (setConnectedWallet) {
+          setConnectedWallet(accounts[0]);
+          console.log(`[${wallet.name}] ✓ Updated context with connected wallet:`, accounts[0]);
+        }
         console.log(`[${wallet.name}] ✓ Successfully connected to account:`, accounts[0]);
       } else {
         console.warn(`[${wallet.name}] ⚠️  No accounts returned:`, accounts);
         setMetaMaskAccount(null);
         setAllAccounts([]);
+        if (setConnectedWallet) {
+          setConnectedWallet(null);
+        }
       }
     } catch (err: any) {
       console.error(`[${wallet.name}] Connection error:`, err);
@@ -399,6 +407,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     setSelectedWalletAnchor(null);
     setAutoShowWalletDialog(false);
     setAvailableWallets([]);
+    // Clear from context
+    if (setConnectedWallet) {
+      setConnectedWallet(null);
+    }
     console.log('[Disconnect] All state cleared');
   };
 
