@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import {
@@ -73,7 +75,7 @@ const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
         decimals,
         initialSupply,
       });
-      const txHash = await client.createToken({
+      const result = await client.createToken({
         name,
         symbol,
         initialSupply: BigInt(initialSupply),
@@ -81,31 +83,31 @@ const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
         decimals,
       });
 
-      console.log('Token creation successful! txHash:', txHash);
+      console.log('Token creation successful! Mint:', result.mint.toString());
 
       // Store the token in localStorage
       addToken({
-        id: txHash,
+        id: result.mint.toString(),
         name,
         symbol,
         decimals,
         totalSupply: initialSupply,
-        mint: 'pending',
+        mint: result.mint.toString(),
         owner: publicKey.toString(),
         createdAt: Date.now(),
-        transactionHash: txHash,
+        transactionHash: result.txSignature,
       });
 
       setMessage({
         type: 'success',
-        text: `✅ Token created successfully! Transaction: ${txHash.slice(0, 8)}...`,
+        text: `✅ Token created successfully! Mint: ${result.mint.toString().slice(0, 8)}... Tx: ${result.txSignature.slice(0, 8)}...`,
       });
       setName('');
       setSymbol('');
       setDecimals(9);
       setInitialSupply(1000);
       
-      if (onSuccess) onSuccess(txHash);
+      if (onSuccess) onSuccess(result.mint.toString());
     } catch (error: any) {
       console.error('Token creation failed:', error);
       console.error('Error message:', error?.message);

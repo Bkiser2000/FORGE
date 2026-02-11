@@ -1,0 +1,93 @@
+{
+  "version": "0.0.1",
+  "name": "SimpleForge",
+  "docs": [
+    "title: SimpleForge",
+    "dev: Minimal stateless token factory for Solana\nThis contract demonstrates token creation events without persistent state"
+  ],
+  "instructions": [
+    {
+      "name": "new",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createToken",
+      "docs": [
+        "dev: Create token (stateless - just emit event)"
+      ],
+      "accounts": [],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "initialsupply",
+          "type": "u256"
+        },
+        {
+          "name": "decimals",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "test",
+      "docs": [
+        "dev: Test function"
+      ],
+      "accounts": [],
+      "args": [],
+      "returns": "string"
+    }
+  ],
+  "events": [
+    {
+      "name": "TokenCreated",
+      "fields": [
+        {
+          "name": "creator",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
+          "index": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "index": false
+        },
+        {
+          "name": "symbol",
+          "type": "string",
+          "index": false
+        },
+        {
+          "name": "initialSupply",
+          "type": "u256",
+          "index": false
+        },
+        {
+          "name": "decimals",
+          "type": "u8",
+          "index": false
+        }
+      ]
+    }
+  ]
+}
