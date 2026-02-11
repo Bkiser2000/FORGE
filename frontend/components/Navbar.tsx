@@ -104,35 +104,42 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     handleChainSwitch();
   }, [selectedChain, connected, disconnect, isClient]);
 
-  // Helper function to detect all available EVM wallets (MetaMask only for Cronos, never Phantom)
+  // Helper function to detect MetaMask ONLY - no Phantom
   const detectAvailableWallets = (): DetectedWallet[] => {
     if (typeof window === 'undefined') return [];
     
-    console.log('[Wallet Detection] Starting to detect available EVM wallets');
+    console.log('[Wallet Detection] Starting to detect MetaMask for Cronos chain');
     const detected: DetectedWallet[] = [];
     
-    // ONLY detect MetaMask and EVM-compatible wallets for Cronos
-    // Phantom is Solana-only, so skip it completely on Cronos
+    // STRICT: Only accept MetaMask, explicitly reject Phantom
+    // Look for MetaMask-specific providers in the providers array
     
-    // Check primary window.ethereum
-    if (window.ethereum) {
-      if (window.ethereum.isMetaMask === true) {
-        console.log('[Wallet Detection] ✓ Found MetaMask as primary provider');
-        detected.push({
-          name: 'MetaMask',
-          provider: window.ethereum as EthereumProvider,
-          isMetaMask: true,
-          isPhantom: false,
-        });
-      }
-      // Skip Phantom detection for Cronos chain
-    }
-    
-    // Check providers array for other wallets
     if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
       console.log(`[Wallet Detection] Checking ${window.ethereum.providers.length} providers in array`);
+      
+      // First pass: Find MetaMask provider
       window.ethereum.providers.forEach((provider: any, index: number) => {
-        if (provider.isMetaMask === true && !detected.find(w => w.isMetaMask)) {
+        console.log(`[Wallet Detection] Provider[${index}]:`, {
+          isMetaMask: provider.isMetaMask,
+          isPhantom: provider.isPhantom,
+          isCoinbaseWallet: provider.isCoinbaseWallet,
+          hasUUID: !!provider.providers?.find((p: any) => p.isMetaMask),
+        });
+        
+        // REJECT Phantom explicitly
+        if (provider.isPhantom === true) {
+          console.log(`[Wallet Detection] ✗ Rejected Phantom in providers[${index}]`);
+          return; // Skip this provider
+        }
+        
+        // REJECT anything that's not MetaMask
+        if (provider.isMetaMask !== true) {
+          console.log(`[Wallet Detection] ✗ Skipped non-MetaMask provider in providers[${index}]`);
+          return;
+        }
+        
+        // Accept only pure MetaMask
+        if (!detected.find(w => w.isMetaMask)) {
           console.log(`[Wallet Detection] ✓ Found MetaMask in providers[${index}]`);
           detected.push({
             name: 'MetaMask',
@@ -141,11 +148,34 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
             isPhantom: false,
           });
         }
-        // Skip Phantom detection for Cronos chain
       });
     }
     
-    console.log(`[Wallet Detection] Found ${detected.length} EVM wallets:`, detected.map(w => w.name));
+    // Fallback: Check primary window.ethereum only if not found in array
+    if (detected.length === 0 && window.ethereum) {
+      console.log('[Wallet Detection] MetaMask not found in providers array, checking window.ethereum...');
+      console.log('[Wallet Detection] window.ethereum:', {
+        isMetaMask: window.ethereum.isMetaMask,
+        isPhantom: window.ethereum.isPhantom,
+      });
+      
+      // REJECT if Phantom
+      if (window.ethereum.isPhantom === true) {
+        console.log('[Wallet Detection] ✗ Rejected Phantom as primary provider');
+      } else if (window.ethereum.isMetaMask === true) {
+        console.log('[Wallet Detection] ✓ Found MetaMask as primary provider');
+        detected.push({
+          name: 'MetaMask',
+          provider: window.ethereum as EthereumProvider,
+          isMetaMask: true,
+          isPhantom: false,
+        });
+      } else {
+        console.log('[Wallet Detection] ✗ Primary window.ethereum is not MetaMask');
+      }
+    }
+    
+    console.log(`[Wallet Detection] Final detected wallets:`, detected.map(w => w.name));
     return detected;
   };
 
@@ -193,9 +223,17 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   };
 
   const connectWithWallet = async (wallet: DetectedWallet) => {
-    console.log(`=== Connecting with ${wallet.name} ===`);
+    console.log(`=== Attempting to connect with ${wallet.name} ===`);
+    
+    // SAFETY CHECK: Make absolutely sure we're not connecting to Phantom
+    if (wallet.name === 'Phantom' || wallet.isPhantom) {
+      console.error('❌ REJECTED: Attempting to connect to Phantom on Cronos chain');
+      alert('Phantom is not supported on Cronos chain. Please use MetaMask.');
+      return;
+    }
     
     // Clear any existing account state BEFORE attempting connection
+    console.log(`[${wallet.name}] Clearing existing account state`);
     setMetaMaskAccount(null);
     setAllAccounts([]);
     
@@ -205,6 +243,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
       // Get a fresh provider reference by re-detecting
       console.log(`[${wallet.name}] Re-detecting wallet provider to ensure fresh reference`);
       const freshWallets = detectAvailableWallets();
+      console.log(`[${wallet.name}] Fresh detection found: ${freshWallets.map(w => w.name).join(', ')}`);
+      
       const freshWallet = freshWallets.find(w => w.name === wallet.name);
       
       if (!freshWallet) {
@@ -221,12 +261,43 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
         return;
       }
 
-      console.log(`✓ Found fresh ${wallet.name} provider`);
+      // STRICT VERIFICATION: Check that provider is actually MetaMask
+      console.log(`[${wallet.name}] Verifying provider is actually MetaMask...`);
+      if (provider.isPhantom === true) {
+        console.error(`❌ VERIFICATION FAILED: Provider claims to be Phantom (isPhantom=${provider.isPhantom})`);
+        alert('Phantom was selected. Please use MetaMask instead.');
+        return;
+      }
+      
+      if (provider.isMetaMask !== true) {
+        console.error(`❌ VERIFICATION FAILED: Provider is not MetaMask (isMetaMask=${provider.isMetaMask})`);
+        alert('Invalid wallet provider detected. Please use MetaMask.');
+        return;
+      }
+
+      console.log(`✓ Verified ${wallet.name} provider is authentic`);
       setIsLoadingMetaMask(true);
       
       // Clear dialog
       setAutoShowWalletDialog(false);
       setSelectedWalletAnchor(null);
+      
+      // IMPORTANT: Revoke previous connections to ensure clean slate
+      // This forces MetaMask to show the account selection dialog
+      console.log(`[${wallet.name}] Attempting to revoke previous connection for clean state...`);
+      try {
+        await provider.request({ 
+          method: 'wallet_revokePermissions',
+          params: [{ eth_accounts: {} }]
+        });
+        console.log(`[${wallet.name}] Previous permissions revoked`);
+      } catch (revokeErr: any) {
+        // This may fail on older MetaMask versions, which is OK
+        console.log(`[${wallet.name}] Revoke failed (normal for some MetaMask versions):`, revokeErr.message);
+      }
+      
+      // Small delay after revoke to ensure clean state
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       console.log(`[${wallet.name}] Creating timeout promise...`);
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -236,7 +307,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
         }, 10000);
       });
       
-      console.log(`[${wallet.name}] Calling eth_requestAccounts...`);
+      console.log(`[${wallet.name}] Calling eth_requestAccounts (MetaMask connection prompt will appear)...`);
       const requestPromise = provider.request({ method: 'eth_requestAccounts' });
       
       const accounts = await Promise.race([requestPromise, timeoutPromise]) as string[];
@@ -252,7 +323,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
         console.log(`[${wallet.name}] ✓ Setting account to:`, accounts[0]);
         setMetaMaskAccount(accounts[0]);
         setAllAccounts(accounts);
-        console.log(`[${wallet.name}] ✓ Successfully connected`);
+        console.log(`[${wallet.name}] ✓ Successfully connected to account:`, accounts[0]);
       } else {
         console.warn(`[${wallet.name}] ⚠️  No accounts returned:`, accounts);
         setMetaMaskAccount(null);
@@ -320,10 +391,15 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   };
 
   const disconnectMetaMask = () => {
+    console.log('[Disconnect] Clearing all Cronos wallet state');
     setMetaMaskAccount(null);
     setAllAccounts([]);
     setAnchorEl(null);
     setShowWalletSelector(false);
+    setSelectedWalletAnchor(null);
+    setAutoShowWalletDialog(false);
+    setAvailableWallets([]);
+    console.log('[Disconnect] All state cleared');
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -506,12 +582,15 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
               </Box>
             )
           ) : (
-            // Cronos: Show available EVM wallets
+            // Cronos: Show available EVM wallets - similar to Solana
             <>
               {!metaMaskAccount ? (
                 availableWallets.length > 0 ? (
-                  <>
-                    <Tooltip title={`${availableWallets.length} wallet(s) available`}>
+                  <Tooltip title={`${availableWallets.length} wallet provider(s) available`}>
+                    <Box sx={{
+                      display: 'flex',
+                      gap: 1,
+                    }}>
                       <Button
                         onClick={(e) => setSelectedWalletAnchor(e.currentTarget)}
                         disabled={isLoadingMetaMask}
@@ -534,46 +613,48 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
                           }
                         }}
                       >
-                        {isLoadingMetaMask ? 'Connecting...' : `Connect (${availableWallets.length})`}
+                        {isLoadingMetaMask ? 'Connecting...' : 'Connect Wallet'}
                       </Button>
-                    </Tooltip>
 
-                    {/* Wallet Selection Menu */}
-                    <Menu
-                      anchorEl={selectedWalletAnchor}
-                      open={Boolean(selectedWalletAnchor)}
-                      onClose={() => setSelectedWalletAnchor(null)}
-                      PaperProps={{
-                        sx: {
-                          backgroundColor: '#1a1f2e',
-                          color: 'white',
-                          borderRadius: '8px',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                        }
-                      }}
-                    >
-                      <MenuItem disabled sx={{ pointerEvents: 'none' }}>
-                        <Box sx={{ fontSize: '12px', opacity: 0.7 }}>
-                          Select Wallet:
-                        </Box>
-                      </MenuItem>
-                      <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', my: 0.5 }} />
-                      {availableWallets.map((wallet) => (
-                        <MenuItem
-                          key={wallet.name}
-                          onClick={() => handleWalletSelect(wallet)}
-                          sx={{
-                            fontSize: '14px',
-                            '&:hover': {
-                              backgroundColor: 'rgba(37, 99, 235, 0.2)',
-                            }
-                          }}
-                        >
-                          {wallet.name}
-                        </MenuItem>
-                      ))}
-                    </Menu>
-                  </>
+                      {/* Wallet Selection Menu */}
+                      <Menu
+                        anchorEl={selectedWalletAnchor}
+                        open={Boolean(selectedWalletAnchor)}
+                        onClose={() => setSelectedWalletAnchor(null)}
+                        PaperProps={{
+                          sx: {
+                            backgroundColor: '#1a1f2e',
+                            color: 'white',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                          }
+                        }}
+                      >
+                        {availableWallets.map((wallet) => (
+                          <MenuItem
+                            key={wallet.name}
+                            onClick={() => {
+                              handleWalletSelect(wallet);
+                              setSelectedWalletAnchor(null);
+                            }}
+                            disabled={isLoadingMetaMask}
+                            sx={{
+                              fontSize: '14px',
+                              cursor: 'pointer',
+                              '&:hover': {
+                                backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                              },
+                              '&:disabled': {
+                                opacity: 0.5,
+                              }
+                            }}
+                          >
+                            {wallet.name}
+                          </MenuItem>
+                        ))}
+                      </Menu>
+                    </Box>
+                  </Tooltip>
                 ) : (
                   <Button
                     disabled
@@ -594,7 +675,10 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
                   </Button>
                 )
               ) : (
-                <>
+                <Box sx={{
+                  display: 'flex',
+                  gap: 1,
+                }}>
                   <Tooltip title="Click to manage account">
                     <Button
                       onClick={handleMenuOpen}
@@ -618,7 +702,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
                     </Button>
                   </Tooltip>
                   
-                  {/* Dropdown Menu */}
+                  {/* Account Management Menu */}
                   <Menu
                     anchorEl={anchorEl}
                     open={Boolean(anchorEl)}
@@ -632,25 +716,6 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
                       }
                     }}
                   >
-                    {/* Current Account Display */}
-                    <MenuItem disabled sx={{ pointerEvents: 'none' }}>
-                      <Box sx={{ fontSize: '12px', opacity: 0.7 }}>
-                        Connected Account:
-                      </Box>
-                    </MenuItem>
-                    <MenuItem 
-                      sx={{ 
-                        fontSize: '12px',
-                        fontFamily: 'monospace',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      {metaMaskAccount}
-                    </MenuItem>
-
-                    {/* Divider */}
-                    <Box sx={{ borderTop: '1px solid rgba(255,255,255,0.1)', my: 0.5 }} />
-
                     {/* Copy Address */}
                     <MenuItem onClick={copyAddress}>
                       <ListItemIcon sx={{ color: 'white', minWidth: 'auto', mr: 1 }}>
@@ -706,7 +771,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
                       <ListItemText>Disconnect</ListItemText>
                     </MenuItem>
                   </Menu>
-                </>
+                </Box>
               )}
             </>
           )}
