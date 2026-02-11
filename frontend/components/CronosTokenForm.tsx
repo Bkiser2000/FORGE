@@ -42,21 +42,56 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
     }
   }, [connectedWallet]);
 
-  // Detect and use only MetaMask
+  // Detect and use only MetaMask - strict detection to avoid Phantom
   const getMetaMaskProvider = () => {
     if (typeof window === 'undefined') return null;
     
-    // Get MetaMask specifically
-    if (window.ethereum?.isMetaMask) {
-      return window.ethereum;
-    }
+    console.log('[CronosTokenForm] Detecting MetaMask provider...');
     
-    // Check for Ethereum providers array (EIP-6963)
+    // STRICT: Check providers array first (preferred location for multiple wallets)
     if (window.ethereum?.providers?.length > 0) {
-      const metaMask = window.ethereum.providers.find((p: any) => p.isMetaMask);
-      if (metaMask) return metaMask;
+      console.log(`[CronosTokenForm] Checking ${window.ethereum.providers.length} providers in array`);
+      for (const provider of window.ethereum.providers) {
+        console.log('[CronosTokenForm] Provider check:', { 
+          isMetaMask: provider.isMetaMask, 
+          isPhantom: provider.isPhantom 
+        });
+        
+        // REJECT Phantom explicitly
+        if (provider.isPhantom === true) {
+          console.log('[CronosTokenForm] ✗ Rejected Phantom provider');
+          continue;
+        }
+        
+        // Accept MetaMask only
+        if (provider.isMetaMask === true) {
+          console.log('[CronosTokenForm] ✓ Found MetaMask provider in array');
+          return provider;
+        }
+      }
     }
     
+    // Fallback: Check primary window.ethereum
+    if (window.ethereum) {
+      console.log('[CronosTokenForm] Checking window.ethereum:', { 
+        isMetaMask: window.ethereum.isMetaMask, 
+        isPhantom: window.ethereum.isPhantom 
+      });
+      
+      // REJECT if Phantom
+      if (window.ethereum.isPhantom === true) {
+        console.log('[CronosTokenForm] ✗ Rejected Phantom as primary provider');
+        return null;
+      }
+      
+      // Accept if MetaMask
+      if (window.ethereum.isMetaMask === true) {
+        console.log('[CronosTokenForm] ✓ Found MetaMask as primary provider');
+        return window.ethereum;
+      }
+    }
+    
+    console.log('[CronosTokenForm] ✗ MetaMask provider not found');
     return null;
   };
 
@@ -244,7 +279,18 @@ export const CronosTokenForm: React.FC<CronosTokenFormProps> = ({ onSuccess }) =
       if (!metaMaskProvider) {
         throw new Error('MetaMask provider not found');
       }
+      
+      // VERIFICATION: Ensure provider is actually MetaMask, not Phantom
+      if (metaMaskProvider.isPhantom === true) {
+        throw new Error('Phantom provider detected. Please use MetaMask instead.');
+      }
+      
+      if (metaMaskProvider.isMetaMask !== true) {
+        throw new Error('Invalid wallet provider detected. Please use MetaMask.');
+      }
 
+      console.log('[CronosTokenForm] ✓ Using verified MetaMask provider for transaction signing');
+      
       // Get provider and signer using MetaMask specifically
       const provider = new BrowserProvider(metaMaskProvider);
       const signer = await provider.getSigner();
