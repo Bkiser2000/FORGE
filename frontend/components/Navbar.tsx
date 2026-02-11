@@ -81,12 +81,15 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     handleChainSwitch();
   }, [selectedChain, connected, disconnect, isClient]);
 
-  // Helper function to detect all available EVM wallets (MetaMask, Phantom, etc.)
+  // Helper function to detect all available EVM wallets (MetaMask only for Cronos, never Phantom)
   const detectAvailableWallets = (): DetectedWallet[] => {
     if (typeof window === 'undefined') return [];
     
-    console.log('[Wallet Detection] Starting to detect available wallets');
+    console.log('[Wallet Detection] Starting to detect available EVM wallets');
     const detected: DetectedWallet[] = [];
+    
+    // ONLY detect MetaMask and EVM-compatible wallets for Cronos
+    // Phantom is Solana-only, so skip it completely on Cronos
     
     // Check primary window.ethereum
     if (window.ethereum) {
@@ -98,15 +101,8 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
           isMetaMask: true,
           isPhantom: false,
         });
-      } else if (window.ethereum.isPhantom === true) {
-        console.log('[Wallet Detection] ✓ Found Phantom as primary provider');
-        detected.push({
-          name: 'Phantom',
-          provider: window.ethereum as EthereumProvider,
-          isMetaMask: false,
-          isPhantom: true,
-        });
       }
+      // Skip Phantom detection for Cronos chain
     }
     
     // Check providers array for other wallets
@@ -121,19 +117,12 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
             isMetaMask: true,
             isPhantom: false,
           });
-        } else if (provider.isPhantom === true && !detected.find(w => w.isPhantom)) {
-          console.log(`[Wallet Detection] ✓ Found Phantom in providers[${index}]`);
-          detected.push({
-            name: 'Phantom',
-            provider: provider as EthereumProvider,
-            isMetaMask: false,
-            isPhantom: true,
-          });
         }
+        // Skip Phantom detection for Cronos chain
       });
     }
     
-    console.log(`[Wallet Detection] Found ${detected.length} wallets:`, detected.map(w => w.name));
+    console.log(`[Wallet Detection] Found ${detected.length} EVM wallets:`, detected.map(w => w.name));
     return detected;
   };
 
@@ -156,37 +145,14 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     const checkWalletsAndConnection = async () => {
       console.log('[Wallet Check] Checking available wallets on Cronos chain');
       
-      // Detect all available wallets
+      // Detect all available EVM wallets
       const wallets = detectAvailableWallets();
       setAvailableWallets(wallets);
       
-      // Try to connect with MetaMask specifically
-      const metaMaskProvider = getMetaMaskProvider();
-      if (!metaMaskProvider) {
-        console.log('[Wallet Check] No MetaMask provider found, clearing account');
-        setMetaMaskAccount(null);
-        setAllAccounts([]);
-        return;
-      }
-
-      try {
-        console.log('[Wallet Check] Requesting eth_accounts from MetaMask...');
-        const accounts = await metaMaskProvider.request({ method: 'eth_accounts' });
-        console.log('[Wallet Check] Accounts returned:', accounts);
-        if (accounts && Array.isArray(accounts) && accounts.length > 0) {
-          console.log('[Wallet Check] Setting account:', accounts[0]);
-          setMetaMaskAccount(accounts[0]);
-          setAllAccounts(accounts);
-        } else {
-          console.log('[Wallet Check] No accounts found');
-          setMetaMaskAccount(null);
-          setAllAccounts([]);
-        }
-      } catch (err) {
-        console.error('[Wallet Check] Error checking connection:', err);
-        setMetaMaskAccount(null);
-        setAllAccounts([]);
-      }
+      // DO NOT auto-connect. Clear any existing connection and let user choose.
+      console.log('[Wallet Check] Clearing any previous connection, user must choose wallet');
+      setMetaMaskAccount(null);
+      setAllAccounts([]);
     };
 
     checkWalletsAndConnection();
