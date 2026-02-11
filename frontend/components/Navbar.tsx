@@ -52,30 +52,52 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     setIsClient(true);
   }, []);
 
-  // Handle chain switching - disconnect current wallet when switching chains
+  // Handle chain switching - properly disconnect and clear state
   useEffect(() => {
     if (!isClient) return;
 
     const handleChainSwitch = async () => {
       if (selectedChain === "solana") {
-        // Disconnecting MetaMask when switching to Solana
-        console.log('Chain switched to Solana, disconnecting MetaMask');
+        // Switching to Solana - disconnect from EVM wallet
+        console.log('[Chain Switch] Switching to Solana - clearing EVM wallet state');
         setMetaMaskAccount(null);
         setAllAccounts([]);
-      } else if (selectedChain === "cronos") {
-        // Disconnecting Solana when switching to Cronos
-        console.log('Chain switched to Cronos, disconnecting Solana wallet');
+        setSelectedWalletAnchor(null);
+        setAutoShowWalletDialog(false);
+        
+        // Disconnect Solana wallet adapter if connected
         if (connected) {
           try {
             await disconnect();
-            console.log('Solana wallet disconnected');
+            console.log('[Chain Switch] Solana wallet disconnected');
           } catch (err) {
-            console.error('Error disconnecting Solana wallet:', err);
+            console.error('[Chain Switch] Error disconnecting Solana wallet:', err);
           }
         }
-        // Also clear MetaMask connection to force fresh connect prompt
+      } else if (selectedChain === "cronos") {
+        // Switching to Cronos - disconnect from Solana wallet and clear EVM state
+        console.log('[Chain Switch] Switching to Cronos - clearing all wallet state');
+        
+        // Clear any existing EVM connection
         setMetaMaskAccount(null);
         setAllAccounts([]);
+        setSelectedWalletAnchor(null);
+        
+        // Disconnect Solana wallet if connected
+        if (connected) {
+          try {
+            await disconnect();
+            console.log('[Chain Switch] Solana wallet disconnected');
+          } catch (err) {
+            console.error('[Chain Switch] Error disconnecting Solana wallet:', err);
+          }
+        }
+        
+        // Show wallet selection dialog
+        setTimeout(() => {
+          console.log('[Chain Switch] Showing wallet selection dialog');
+          setAutoShowWalletDialog(true);
+        }, 100);
       }
     };
 
@@ -144,49 +166,26 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     if (!isClient || selectedChain !== "cronos") return;
 
     const checkWalletsAndConnection = async () => {
-      console.log('[Wallet Check] Checking available wallets on Cronos chain');
+      console.log('[Wallet Detection] Checking available wallets on Cronos chain');
       
-      // Detect all available EVM wallets
+      // Detect all available EVM wallets - do this fresh each time
       const wallets = detectAvailableWallets();
-      console.log('[Wallet Check] Detected wallets:', wallets.map(w => w.name));
+      console.log('[Wallet Detection] Detected wallets:', wallets.map(w => w.name));
       setAvailableWallets(wallets);
       
-      // Clear any existing connection
-      console.log('[Wallet Check] Clearing any previous connection');
-      setMetaMaskAccount(null);
-      setAllAccounts([]);
-      
-      // Auto-show wallet selection dialog
+      // Wait a moment for state to update, then show dialog if wallets available
       if (wallets.length > 0) {
-        console.log('[Wallet Check] Showing wallet selection dialog');
+        console.log('[Wallet Detection] Will show wallet selection dialog');
         setAutoShowWalletDialog(true);
+      } else {
+        console.log('[Wallet Detection] No wallets detected');
       }
     };
 
-    checkWalletsAndConnection();
-
-    // Listen for account changes only when on Cronos
-    const provider = getMetaMaskProvider();
-    if (provider) {
-      console.log('[Wallet Listener] Setting up accountsChanged listener for Cronos');
-      const handleAccountsChanged = (accounts: any) => {
-        console.log('[Wallet Listener] Accounts changed event:', accounts);
-        if (accounts && Array.isArray(accounts) && accounts.length > 0) {
-          setMetaMaskAccount(accounts[0]);
-          setAllAccounts(accounts);
-        } else {
-          setMetaMaskAccount(null);
-          setAllAccounts([]);
-        }
-      };
-      
-      provider.on('accountsChanged', handleAccountsChanged);
-      
-      return () => {
-        console.log('[MetaMask Listener] Removing accountsChanged listener');
-        provider.removeListener('accountsChanged', handleAccountsChanged);
-      };
-    }
+    // Small delay to ensure state is cleared first
+    const timer = setTimeout(checkWalletsAndConnection, 50);
+    
+    return () => clearTimeout(timer);
   }, [isClient, selectedChain]);
 
   const formatWallet = (wallet: string) => {
@@ -196,10 +195,25 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const connectWithWallet = async (wallet: DetectedWallet) => {
     console.log(`=== Connecting with ${wallet.name} ===`);
     
+    // Clear any existing account state BEFORE attempting connection
+    setMetaMaskAccount(null);
+    setAllAccounts([]);
+    
     let timeoutId: NodeJS.Timeout | null = null;
     
     try {
-      const provider = wallet.provider;
+      // Get a fresh provider reference by re-detecting
+      console.log(`[${wallet.name}] Re-detecting wallet provider to ensure fresh reference`);
+      const freshWallets = detectAvailableWallets();
+      const freshWallet = freshWallets.find(w => w.name === wallet.name);
+      
+      if (!freshWallet) {
+        console.error(`${wallet.name} not found in fresh detection`);
+        alert(`${wallet.name} is not available. Please ensure it's installed.`);
+        return;
+      }
+      
+      const provider = freshWallet.provider;
       
       if (!provider) {
         console.error(`${wallet.name} provider not found`);
@@ -207,66 +221,57 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
         return;
       }
 
-      console.log(`✓ Found ${wallet.name} provider`);
-      console.log('Provider object:', provider);
-      
+      console.log(`✓ Found fresh ${wallet.name} provider`);
       setIsLoadingMetaMask(true);
-      setSelectedWalletAnchor(null); // Close the menu
       
-      console.log('About to create timeout promise...');
+      // Clear dialog
+      setAutoShowWalletDialog(false);
+      setSelectedWalletAnchor(null);
+      
+      console.log(`[${wallet.name}] Creating timeout promise...`);
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
           console.error(`⏱️  TIMEOUT: eth_requestAccounts took more than 10 seconds with ${wallet.name}`);
           reject(new Error(`${wallet.name} request timed out after 10 seconds`));
         }, 10000);
-        console.log('Timeout set, ID:', timeoutId);
       });
       
-      console.log(`About to call ${wallet.name}.request with eth_requestAccounts...`);
-      const requestPromise = (async () => {
-        console.log(`Inside ${wallet.name} requestPromise`);
-        try {
-          console.log(`Calling ${wallet.name}.request with method: eth_requestAccounts`);
-          const result = await provider.request({ method: 'eth_requestAccounts' });
-          console.log(`✓ ${wallet.name}.request returned:`, result);
-          return result;
-        } catch (innerErr) {
-          console.error(`✗ ${wallet.name}.request threw error:`, innerErr);
-          throw innerErr;
-        }
-      })();
+      console.log(`[${wallet.name}] Calling eth_requestAccounts...`);
+      const requestPromise = provider.request({ method: 'eth_requestAccounts' });
       
-      console.log('About to race promises...');
-      const accounts = await Promise.race([requestPromise, timeoutPromise]);
+      const accounts = await Promise.race([requestPromise, timeoutPromise]) as string[];
       
       // Clear timeout if promise resolved
       if (timeoutId) {
         clearTimeout(timeoutId);
-        console.log('✓ Cleared timeout');
       }
       
-      console.log('✓ Got accounts:', accounts);
+      console.log(`[${wallet.name}] ✓ Got accounts:`, accounts);
       
       if (accounts && Array.isArray(accounts) && accounts.length > 0) {
-        console.log('✓ Setting account:', accounts[0]);
+        console.log(`[${wallet.name}] ✓ Setting account to:`, accounts[0]);
         setMetaMaskAccount(accounts[0]);
-        setAllAccounts(accounts as string[]);
+        setAllAccounts(accounts);
+        console.log(`[${wallet.name}] ✓ Successfully connected`);
       } else {
-        console.warn('⚠️  No accounts or invalid format:', accounts);
+        console.warn(`[${wallet.name}] ⚠️  No accounts returned:`, accounts);
+        setMetaMaskAccount(null);
+        setAllAccounts([]);
       }
     } catch (err: any) {
-      console.error('=== ERROR ===');
-      console.error('Error type:', err?.constructor?.name);
-      console.error('Error message:', err?.message);
-      console.error('Error code:', err?.code);
-      console.error('Full error:', err);
-      alert(`Connection failed: ${err?.message || 'Unknown error'}`);
+      console.error(`[${wallet.name}] Connection error:`, err);
+      if (err.message && !err.message.includes('User rejected')) {
+        alert(`Connection failed: ${err?.message || 'Unknown error'}`);
+      }
+      // Make sure state is cleared on error
+      setMetaMaskAccount(null);
+      setAllAccounts([]);
     } finally {
       // Make sure timeout is cleared
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      console.log('=== Connect attempt finished ===');
+      console.log(`[${wallet.name}] Connect attempt finished`);
       setIsLoadingMetaMask(false);
     }
   };
