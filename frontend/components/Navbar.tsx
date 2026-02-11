@@ -4,7 +4,7 @@ import React, { useContext, useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import "@solana/wallet-adapter-react-ui/styles.css";
-import { AppBar, Toolbar, Typography, Button, Box, Select, MenuItem, Menu, ListItemIcon, ListItemText, Tooltip } from "@mui/material";
+import { AppBar, Toolbar, Typography, Button, Box, Select, MenuItem, Menu, ListItemIcon, ListItemText, Tooltip, Dialog, DialogTitle, DialogContent, List, ListItem } from "@mui/material";
 import { WalletContext } from "@/pages/_app";
 import Image from "next/image";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -45,6 +45,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
   const [showWalletSelector, setShowWalletSelector] = useState(false);
   const [availableWallets, setAvailableWallets] = useState<DetectedWallet[]>([]);
   const [selectedWalletAnchor, setSelectedWalletAnchor] = useState<null | HTMLElement>(null);
+  const [autoShowWalletDialog, setAutoShowWalletDialog] = useState(false);
 
   // Ensure component only renders on client
   useEffect(() => {
@@ -138,7 +139,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
     return null;
   };
 
-  // Check for MetaMask connection on mount and when chain switches to Cronos
+  // When chain switches to Cronos, detect wallets and show selection dialog
   useEffect(() => {
     if (!isClient || selectedChain !== "cronos") return;
 
@@ -147,12 +148,19 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
       
       // Detect all available EVM wallets
       const wallets = detectAvailableWallets();
+      console.log('[Wallet Check] Detected wallets:', wallets.map(w => w.name));
       setAvailableWallets(wallets);
       
-      // DO NOT auto-connect. Clear any existing connection and let user choose.
-      console.log('[Wallet Check] Clearing any previous connection, user must choose wallet');
+      // Clear any existing connection
+      console.log('[Wallet Check] Clearing any previous connection');
       setMetaMaskAccount(null);
       setAllAccounts([]);
+      
+      // Auto-show wallet selection dialog
+      if (wallets.length > 0) {
+        console.log('[Wallet Check] Showing wallet selection dialog');
+        setAutoShowWalletDialog(true);
+      }
     };
 
     checkWalletsAndConnection();
@@ -274,6 +282,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
 
   const handleWalletSelect = async (wallet: DetectedWallet) => {
     await connectWithWallet(wallet);
+    setAutoShowWalletDialog(false);
   };
 
   const copyAddress = async () => {
@@ -698,6 +707,59 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onPageChange }) => {
           )}
         </Box>
       </Toolbar>
+
+      {/* Auto Wallet Selection Dialog for Cronos */}
+      <Dialog
+        open={autoShowWalletDialog && selectedChain === "cronos"}
+        onClose={() => setAutoShowWalletDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: '#1a1f2e',
+            color: 'white',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.1)',
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 'bold', fontSize: '18px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          Select Wallet Provider
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <List sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {availableWallets.map((wallet) => (
+              <Button
+                key={wallet.name}
+                onClick={() => handleWalletSelect(wallet)}
+                disabled={isLoadingMetaMask}
+                fullWidth
+                sx={{
+                  backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                  border: '1px solid rgba(37, 99, 235, 0.3)',
+                  borderRadius: '8px',
+                  color: 'white',
+                  cursor: isLoadingMetaMask ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  padding: '12px 16px',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  textTransform: 'none',
+                  '&:hover': {
+                    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                    borderColor: 'rgba(37, 99, 235, 0.5)',
+                  },
+                  '&:disabled': {
+                    opacity: 0.5,
+                  }
+                }}
+              >
+                {isLoadingMetaMask && wallet === availableWallets[0] ? 'Connecting...' : wallet.name}
+              </Button>
+            ))}
+          </List>
+        </DialogContent>
+      </Dialog>
     </AppBar>
   );
 };
