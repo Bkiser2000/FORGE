@@ -13,7 +13,7 @@ import {
   Stack,
   Paper,
 } from '@mui/material';
-import AnchorForgeClient from '../lib/anchor-client';
+import SolanaForgeClient from '../lib/solana-forge-client';
 import { useTokens } from '../hooks/useTokens';
 
 interface CreateTokenFormProps {
@@ -62,9 +62,10 @@ const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
         }
       };
       
-      console.log('Initializing AnchorForgeClient...');
-      const client = new AnchorForgeClient(provider);
-      console.log('AnchorForgeClient initialized');
+      console.log('Initializing SolanaForgeClient...');
+      const client = new SolanaForgeClient();
+      client.connectWallet({ publicKey, signTransaction, signAllTransactions });
+      console.log('SolanaForgeClient initialized');
       
       console.log('Calling createToken with params:', {
         name,
@@ -75,8 +76,9 @@ const CreateTokenFormContent: React.FC<CreateTokenFormProps> = ({
       const txHash = await client.createToken({
         name,
         symbol,
+        initialSupply: BigInt(initialSupply),
+        maxSupply: BigInt(0),
         decimals,
-        initialSupply,
       });
 
       console.log('Token creation successful! txHash:', txHash);

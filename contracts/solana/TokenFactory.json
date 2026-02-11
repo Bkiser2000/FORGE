@@ -1,0 +1,155 @@
+{
+  "version": "0.0.1",
+  "name": "TokenFactory",
+  "docs": [
+    "title: TokenFactory",
+    "dev: Factory contract for managing tokens on Solana via Solang"
+  ],
+  "instructions": [
+    {
+      "name": "new",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "deployedTokens",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "arg0",
+          "type": "u256"
+        }
+      ],
+      "returns": "publicKey"
+    },
+    {
+      "name": "tokenCount",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [],
+      "returns": "u256"
+    },
+    {
+      "name": "getTokenCount",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [],
+      "returns": "u256"
+    },
+    {
+      "name": "getTokenByIndex",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": false,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "index",
+          "type": "u256"
+        }
+      ],
+      "returns": "publicKey"
+    },
+    {
+      "name": "registerToken",
+      "accounts": [
+        {
+          "name": "dataAccount",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": false
+        }
+      ],
+      "args": [
+        {
+          "name": "tokenaddress",
+          "type": "publicKey"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "symbol",
+          "type": "string"
+        },
+        {
+          "name": "creator",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "TokenRegistered",
+      "fields": [
+        {
+          "name": "tokenAddress",
+          "type": "publicKey",
+          "index": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "index": false
+        },
+        {
+          "name": "symbol",
+          "type": "string",
+          "index": false
+        },
+        {
+          "name": "creator",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          },
+          "index": true
+        },
+        {
+          "name": "tokenIndex",
+          "type": "u256",
+          "index": false
+        }
+      ]
+    }
+  ]
+}
