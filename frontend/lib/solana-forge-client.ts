@@ -75,7 +75,7 @@ export class SolanaForgeClient {
 
     const transaction = new Transaction();
 
-    // Step 1: Create data account
+    // Step 1: Create data account (dataAccount must be a signer)
     transaction.add(
       SystemProgram.createAccount({
         fromPubkey: this.walletPublicKey,
@@ -108,12 +108,18 @@ export class SolanaForgeClient {
 
     transaction.add(initInstruction);
 
-    // Sign and send transaction
+    // Set up transaction signing
     transaction.feePayer = this.walletPublicKey;
     const blockHash = await this.connection.getLatestBlockhash();
     transaction.recentBlockhash = blockHash.blockhash;
 
+    // Sign with wallet first
     const signedTx = await this.wallet.signTransaction(transaction);
+    
+    // Then sign with the data account keypair
+    signedTx.partialSign(dataAccount);
+
+    // Send and confirm
     const signature = await this.connection.sendRawTransaction(
       signedTx.serialize()
     );
@@ -144,7 +150,7 @@ export class SolanaForgeClient {
 
     const transaction = new Transaction();
 
-    // Create account
+    // Create account (dataAccount must be a signer)
     transaction.add(
       SystemProgram.createAccount({
         fromPubkey: this.walletPublicKey,
@@ -181,11 +187,15 @@ export class SolanaForgeClient {
 
     transaction.add(registerInstruction);
 
+    // Set up signing
     transaction.feePayer = this.walletPublicKey;
     const blockHash = await this.connection.getLatestBlockhash();
     transaction.recentBlockhash = blockHash.blockhash;
 
+    // Sign with wallet and data account
     const signedTx = await this.wallet.signTransaction(transaction);
+    signedTx.partialSign(dataAccount);
+
     const signature = await this.connection.sendRawTransaction(
       signedTx.serialize()
     );
@@ -210,38 +220,43 @@ export class SolanaForgeClient {
       throw new Error("Wallet not connected");
     }
 
-    const mintData = this.buildMintData(to, amount, this.walletPublicKey);
+    try {
+      const mintData = this.buildMintData(to, amount, this.walletPublicKey);
 
-    const mintInstruction = new TransactionInstruction({
-      programId: FORGE_TOKEN_PROGRAM_ID,
-      keys: [
-        {
-          pubkey: tokenDataAccount,
-          isSigner: false,
-          isWritable: true,
-        },
-      ],
-      data: mintData,
-    });
+      const mintInstruction = new TransactionInstruction({
+        programId: FORGE_TOKEN_PROGRAM_ID,
+        keys: [
+          {
+            pubkey: tokenDataAccount,
+            isSigner: false,
+            isWritable: true,
+          },
+        ],
+        data: mintData,
+      });
 
-    const transaction = new Transaction();
-    transaction.add(mintInstruction);
-    transaction.feePayer = this.walletPublicKey;
+      const transaction = new Transaction();
+      transaction.add(mintInstruction);
+      transaction.feePayer = this.walletPublicKey;
 
-    const blockHash = await this.connection.getLatestBlockhash();
-    transaction.recentBlockhash = blockHash.blockhash;
+      const blockHash = await this.connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockHash.blockhash;
 
-    const signedTx = await this.wallet.signTransaction(transaction);
-    const signature = await this.connection.sendRawTransaction(
-      signedTx.serialize()
-    );
+      const signedTx = await this.wallet.signTransaction(transaction);
+      const signature = await this.connection.sendRawTransaction(
+        signedTx.serialize()
+      );
 
-    await this.connection.confirmTransaction(signature);
+      await this.connection.confirmTransaction(signature);
 
-    console.log("Tokens minted");
-    console.log("Transaction signature:", signature);
+      console.log("Tokens minted");
+      console.log("Transaction signature:", signature);
 
-    return signature;
+      return signature;
+    } catch (error) {
+      console.error("Mint error:", error);
+      throw error;
+    }
   }
 
   /**
